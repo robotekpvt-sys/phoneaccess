@@ -11,31 +11,23 @@
         .btn{width:100%;padding:14px;border:none;border-radius:8px;background:#00ff4122;color:#00ff41;font-weight:600;font-size:14px;cursor:pointer;border:1px solid #00ff4133;margin-top:10px}
         .btn:hover{background:#00ff4133}
         .btn:disabled{opacity:0.4;cursor:not-allowed}
+        .btn-success{background:#00ff4133;border-color:#00ff41}
         .status{padding:10px;margin:10px 0;border-radius:8px;background:#001a00;font-size:13px;color:#00ff4188}
-        .preview img{max-width:100%;max-height:200px;border-radius:8px;margin:8px 0;border:1px solid #00ff4133}
-        .file-list{text-align:left;font-size:12px;max-height:200px;overflow-y:auto}
-        .file-list div{padding:4px 8px;border-bottom:1px solid #00ff4111;display:flex;justify-content:space-between}
-        .file-list .size{color:#00ff4188;font-size:10px}
+        .preview-img{max-width:100%;max-height:250px;border-radius:8px;border:1px solid #00ff4133;margin:8px 0}
         .log{font-size:11px;color:#00ff4166;max-height:150px;overflow-y:auto;text-align:left;margin-top:10px;padding:8px;background:#000a00;border-radius:8px;border:1px solid #00ff4111}
         .log div{padding:2px 0;border-bottom:1px solid #00ff4111}
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-        .badge{padding:2px 10px;border-radius:20px;font-size:10px;font-weight:600;display:inline-block}
-        .badge.green{background:#00ff4122;color:#00ff41;border:1px solid #00ff41}
-        .badge.red{background:#ff444422;color:#ff4444;border:1px solid #ff4444}
-        .badge.yellow{background:#ffaa0022;color:#ffaa00;border:1px solid #ffaa00}
         .hidden{display:none}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="font-size:18px;margin-bottom:8px;">📱 PHONE MEDIA ACCESS</h2>
-    <div style="font-size:11px;color:#00ff4188;margin-bottom:16px;">Select and access phone media</div>
+    <h2 style="font-size:18px;margin-bottom:8px;">📱 PHONE MEDIA</h2>
+    <div style="font-size:11px;color:#00ff4188;margin-bottom:16px;">Select & send media to admin</div>
 
-    <!-- Status -->
-    <div class="status" id="statusText">⏳ Select an option below</div>
+    <div class="status" id="statusText">⏳ Select an option</div>
 
-    <!-- Buttons -->
     <div class="grid-2">
         <button class="btn" onclick="accessCamera()">📸 Camera</button>
         <button class="btn" onclick="accessGallery()">🖼️ Gallery</button>
@@ -43,32 +35,23 @@
         <button class="btn" onclick="accessFiles()">📁 Files</button>
     </div>
 
-    <!-- Preview -->
     <div id="previewContainer" class="hidden">
         <div id="previewContent"></div>
     </div>
 
-    <!-- File List -->
-    <div id="fileContainer" class="hidden">
-        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📄 Selected Files</div>
-        <div class="file-list" id="fileList"></div>
-    </div>
+    <button class="btn btn-success" onclick="sendToAdmin()" id="sendBtn" disabled>📤 Send to Admin</button>
 
-    <!-- Device Info -->
-    <div style="margin-top:12px;font-size:11px;color:#00ff4144;" id="deviceInfo"></div>
-
-    <!-- Log -->
     <div class="log" id="log">
         <div>🟢 System ready</div>
         <div>📱 Select an option to access media</div>
     </div>
 
-    <button class="btn" onclick="sendToAdmin()" id="sendBtn" disabled>📤 Send to Admin</button>
+    <div style="font-size:10px;color:#00ff4144;margin-top:8px;" id="deviceInfo"></div>
 </div>
 
 <script>
     // ==========================================
-    // 🔥 PHONE MEDIA ACCESS - WORKING
+    // 🔥 PHONE MEDIA ACCESS
     // ==========================================
 
     const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
@@ -76,11 +59,7 @@
 
     let selectedFiles = [];
     let capturedImage = null;
-    let screenStream = null;
 
-    // ==========================================
-    // LOG
-    // ==========================================
     function addLog(msg) {
         const log = document.getElementById('log');
         const div = document.createElement('div');
@@ -96,71 +75,53 @@
     }
 
     // ==========================================
-    // 1. CAMERA ACCESS
+    // CAMERA
     // ==========================================
     function accessCamera() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
             setStatus('❌ Camera not supported');
             return;
         }
-
         setStatus('📸 Opening camera...');
-        
         navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
             .then(stream => {
                 const video = document.createElement('video');
                 video.srcObject = stream;
                 video.play();
-                
-                // Capture after 1 second
                 setTimeout(() => {
                     const canvas = document.createElement('canvas');
                     canvas.width = video.videoWidth || 640;
                     canvas.height = video.videoHeight || 480;
                     canvas.getContext('2d').drawImage(video, 0, 0);
-                    
-                    // Stop stream
                     stream.getTracks().forEach(t => t.stop());
-                    
-                    // Save image
                     capturedImage = canvas.toDataURL('image/jpeg', 0.8);
-                    
-                    // Show preview
                     document.getElementById('previewContainer').classList.remove('hidden');
                     document.getElementById('previewContent').innerHTML = `
-                        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📸 Captured Image</div>
-                        <img src="${capturedImage}" style="max-width:100%;max-height:250px;border-radius:8px;border:1px solid #00ff4133;">
-                        <div style="font-size:11px;color:#00ff4188;margin-top:4px;">Size: ${Math.round(capturedImage.length/1024)} KB</div>
+                        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📸 Captured</div>
+                        <img src="${capturedImage}" class="preview-img">
+                        <div style="font-size:11px;color:#00ff4188;">${Math.round(capturedImage.length/1024)} KB</div>
                     `;
-                    
                     document.getElementById('sendBtn').disabled = false;
                     setStatus('✅ Image captured!');
-                    addLog('📸 Image captured: ' + Math.round(capturedImage.length/1024) + ' KB');
                 }, 1000);
             })
-            .catch(err => {
-                setStatus('❌ Camera access denied: ' + err.message);
-                addLog('❌ Camera error: ' + err.message);
-            });
+            .catch(err => setStatus('❌ Camera denied: ' + err.message));
     }
 
     // ==========================================
-    // 2. GALLERY ACCESS
+    // GALLERY
     // ==========================================
     function accessGallery() {
         const input = document.createElement('input');
         input.type = 'file';
         input.accept = 'image/*,video/*';
         input.multiple = true;
-        
         input.onchange = function(e) {
             if (this.files && this.files.length > 0) {
                 selectedFiles = Array.from(this.files);
-                displayFiles(selectedFiles);
                 setStatus('📷 ' + selectedFiles.length + ' files selected');
-                addLog('📷 Selected ' + selectedFiles.length + ' files from gallery');
+                document.getElementById('sendBtn').disabled = false;
                 
-                // Show first image preview
                 const file = selectedFiles[0];
                 if (file.type.startsWith('image/')) {
                     const reader = new FileReader();
@@ -168,134 +129,69 @@
                         document.getElementById('previewContainer').classList.remove('hidden');
                         document.getElementById('previewContent').innerHTML = `
                             <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖼️ Preview</div>
-                            <img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #00ff4133;">
-                            <div style="font-size:11px;color:#00ff4188;margin-top:4px;">${file.name} (${Math.round(file.size/1024)} KB)</div>
+                            <img src="${ev.target.result}" class="preview-img">
+                            <div style="font-size:11px;color:#00ff4188;">${file.name} (${Math.round(file.size/1024)} KB)</div>
                         `;
                     };
                     reader.readAsDataURL(file);
                 }
-                
-                document.getElementById('sendBtn').disabled = false;
             }
         };
-        
         input.click();
         setStatus('📷 Opening gallery...');
     }
 
     // ==========================================
-    // 3. SCREEN RECORDING
+    // SCREEN
     // ==========================================
     function accessScreen() {
         if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-            setStatus('❌ Screen recording not supported');
+            setStatus('❌ Screen not supported');
             return;
         }
-
-        setStatus('🖥️ Select screen to share...');
-        
+        setStatus('🖥️ Select screen...');
         navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
             .then(stream => {
-                screenStream = stream;
-                
-                // Capture after 1 second
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
                 setTimeout(() => {
-                    const video = document.createElement('video');
-                    video.srcObject = stream;
-                    video.play();
-                    
-                    setTimeout(() => {
-                        const canvas = document.createElement('canvas');
-                        canvas.width = video.videoWidth || 1280;
-                        canvas.height = video.videoHeight || 720;
-                        canvas.getContext('2d').drawImage(video, 0, 0);
-                        
-                        stream.getTracks().forEach(t => t.stop());
-                        
-                        capturedImage = canvas.toDataURL('image/jpeg', 0.7);
-                        
-                        document.getElementById('previewContainer').classList.remove('hidden');
-                        document.getElementById('previewContent').innerHTML = `
-                            <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖥️ Screen Capture</div>
-                            <img src="${capturedImage}" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #00ff4133;">
-                            <div style="font-size:11px;color:#00ff4188;margin-top:4px;">Screen captured (${Math.round(capturedImage.length/1024)} KB)</div>
-                        `;
-                        
-                        document.getElementById('sendBtn').disabled = false;
-                        setStatus('✅ Screen captured!');
-                        addLog('🖥️ Screen captured: ' + Math.round(capturedImage.length/1024) + ' KB');
-                    }, 1500);
-                }, 500);
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 1280;
+                    canvas.height = video.videoHeight || 720;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    stream.getTracks().forEach(t => t.stop());
+                    capturedImage = canvas.toDataURL('image/jpeg', 0.7);
+                    document.getElementById('previewContainer').classList.remove('hidden');
+                    document.getElementById('previewContent').innerHTML = `
+                        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖥️ Screen</div>
+                        <img src="${capturedImage}" class="preview-img">
+                        <div style="font-size:11px;color:#00ff4188;">${Math.round(capturedImage.length/1024)} KB</div>
+                    `;
+                    document.getElementById('sendBtn').disabled = false;
+                    setStatus('✅ Screen captured!');
+                }, 1500);
             })
-            .catch(err => {
-                setStatus('❌ Screen recording cancelled: ' + err.message);
-                addLog('❌ Screen error: ' + err.message);
-            });
+            .catch(err => setStatus('❌ Screen cancelled: ' + err.message));
     }
 
     // ==========================================
-    // 4. FILES ACCESS
+    // FILES
     // ==========================================
     function accessFiles() {
-        // Use File System Access API
-        if (window.showDirectoryPicker) {
-            setStatus('📁 Opening folder...');
-            window.showDirectoryPicker()
-                .then(dir => {
-                    addLog('📁 Folder opened: ' + dir.name);
-                    listFiles(dir);
-                })
-                .catch(err => {
-                    setStatus('❌ Folder access cancelled');
-                    addLog('❌ Folder error: ' + err.message);
-                });
-        } else {
-            // Fallback: File input
-            const input = document.createElement('input');
-            input.type = 'file';
-            input.multiple = true;
-            input.webkitdirectory = true;
-            
-            input.onchange = function(e) {
-                if (this.files && this.files.length > 0) {
-                    selectedFiles = Array.from(this.files);
-                    displayFiles(selectedFiles);
-                    setStatus('📁 ' + selectedFiles.length + ' files selected');
-                    addLog('📁 Selected ' + selectedFiles.length + ' files');
-                    document.getElementById('sendBtn').disabled = false;
-                }
-            };
-            input.click();
-            setStatus('📁 Select files...');
-        }
-    }
-
-    async function listFiles(dir) {
-        const files = [];
-        for await (const entry of dir.values()) {
-            if (entry.kind === 'file') {
-                const file = await entry.getFile();
-                files.push({ name: file.name, size: file.size, type: file.type });
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.multiple = true;
+        input.webkitdirectory = true;
+        input.onchange = function(e) {
+            if (this.files && this.files.length > 0) {
+                selectedFiles = Array.from(this.files);
+                setStatus('📁 ' + selectedFiles.length + ' files selected');
+                document.getElementById('sendBtn').disabled = false;
             }
-        }
-        
-        document.getElementById('fileContainer').classList.remove('hidden');
-        document.getElementById('fileList').innerHTML = files.map(f => `
-            <div><span>${f.name}</span><span class="size">${Math.round(f.size/1024)} KB</span></div>
-        `).join('');
-        
-        setStatus('📁 ' + files.length + ' files found');
-        addLog('📁 Listed ' + files.length + ' files from folder');
-    }
-
-    // ==========================================
-    // DISPLAY FILES
-    // ==========================================
-    function displayFiles(files) {
-        document.getElementById('fileContainer').classList.remove('hidden');
-        document.getElementById('fileList').innerHTML = files.map(f => `
-            <div><span>${f.name}</span><span class="size">${Math.round(f.size/1024)} KB</span></div>
-        `).join('');
+        };
+        input.click();
+        setStatus('📁 Select files...');
     }
 
     // ==========================================
@@ -310,51 +206,34 @@
             fileCount: selectedFiles.length
         };
         
-        // Save to localStorage
         try {
             let allData = JSON.parse(localStorage.getItem('phone_media') || '{}');
             allData[DEVICE_ID] = data;
             allData[DEVICE_ID].lastUpdate = new Date().toISOString();
             localStorage.setItem('phone_media', JSON.stringify(allData));
-            
-            setStatus('✅ Data sent to admin!');
-            addLog('📤 Sent ' + selectedFiles.length + ' files to admin');
+            setStatus('✅ Sent to admin!');
             document.getElementById('sendBtn').disabled = true;
             document.getElementById('sendBtn').textContent = '✅ Sent!';
-            
-            // Also send to admin via URL (silent)
-            const adminUrl = window.location.href.replace(/\/[^\/]*$/, '/admin');
-            fetch(adminUrl + '?data=' + encodeURIComponent(JSON.stringify({ device: DEVICE_ID, files: selectedFiles.length })))
-                .catch(() => {});
-                
+            addLog('📤 Sent ' + selectedFiles.length + ' files');
+            toast('✅ Sent to admin!');
         } catch(e) {
-            setStatus('❌ Error saving: ' + e.message);
-            addLog('❌ Save error: ' + e.message);
+            setStatus('❌ Error: ' + e.message);
         }
     }
 
-    // ==========================================
-    // AUTO DETECT DEVICE
-    // ==========================================
-    function detectDevice() {
-        const ua = navigator.userAgent;
-        let device = 'Unknown';
-        if (/iPhone|iPad|iPod/.test(ua)) device = '🍎 iPhone/iPad';
-        else if (/Android/.test(ua)) device = '📱 Android';
-        else if (/Windows/.test(ua)) device = '💻 Windows';
-        else if (/Mac/.test(ua)) device = '🍎 Mac';
-        
-        document.getElementById('deviceInfo').textContent = device + ' | ' + DEVICE_ID;
-        addLog('📱 Device detected: ' + device);
+    function toast(msg) {
+        const t = document.createElement('div');
+        t.style.cssText = `
+            position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+            background: #001a00; color: #00ff41; padding: 10px 20px; border-radius: 8px;
+            font-size: 12px; z-index: 9999; border: 1px solid #00ff4133;
+            font-family: 'Courier New', monospace;
+        `;
+        t.textContent = msg;
+        document.body.appendChild(t);
+        setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2000);
     }
 
-    // ==========================================
-    // INIT
-    // ==========================================
-    detectDevice();
-    addLog('🟢 Media access ready');
-    addLog('📱 Select an option to access media');
-    
     console.log('📱 Phone Media Access Loaded');
     console.log('🆔 Device:', DEVICE_ID);
 </script>
