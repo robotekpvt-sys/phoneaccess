@@ -56,32 +56,40 @@
     <div style="font-size:10px;color:#00ff4144;margin-top:8px;" id="deviceInfo"></div>
 </div>
 
+```html
 <!-- ===== FIREBASE SDK ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
 <script>
 // ==========================================
-// 🔥 FIREBASE CONFIG - APNI CONFIG DAALO 🔥
+// 🔥 FIREBASE CONFIG FIXED 🔥
 // ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyCq5-Rrk6dh0SzqKcR8zR8zFHeGUgTj960",
     authDomain: "phone-acces-f7b2a.firebaseapp.com",
+    databaseURL: "https://phone-acces-f7b2a-default-rtdb.firebaseio.com",
     projectId: "phone-acces-f7b2a",
-    storageBucket: "phone-acces-f7b2a.firebasestorage.app",
+    storageBucket: "phone-acces-f7b2a.appspot.com",
     messagingSenderId: "561680712228",
     appId: "1:561680712228:web:77bf30d6cf328e19038eb1",
     measurementId: "G-3K3WD2EP7M"
 };
 
-// Initialize Firebase
+// ==========================================
+// INIT FIREBASE
+// ==========================================
 firebase.initializeApp(firebaseConfig);
+
 const database = firebase.database();
+const storage = firebase.storage();
 
 // ==========================================
 // DEVICE ID
 // ==========================================
 const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+
 document.getElementById('deviceInfo').textContent = 'Device: ' + DEVICE_ID;
 
 let selectedFiles = [];
@@ -91,19 +99,25 @@ let capturedImage = null;
 // FIREBASE STATUS
 // ==========================================
 function updateFirebaseStatus(connected) {
+
     const statusEl = document.getElementById('firebaseStatus');
+
     if (connected) {
+
         statusEl.className = 'online';
         statusEl.textContent = '🟢 Connected';
+
         addLog('🔥 Firebase connected');
+
     } else {
+
         statusEl.className = 'offline';
         statusEl.textContent = '🔴 Disconnected';
+
         addLog('❌ Firebase disconnected');
     }
 }
 
-// Check Firebase connection
 database.ref('.info/connected').on('value', (snap) => {
     updateFirebaseStatus(snap.val());
 });
@@ -112,245 +126,415 @@ database.ref('.info/connected').on('value', (snap) => {
 // TEST FIREBASE
 // ==========================================
 function testFirebase() {
+
     setStatus('🔧 Testing Firebase...');
-    
+
     database.ref('test/' + DEVICE_ID).set({
         deviceId: DEVICE_ID,
         test: true,
         timestamp: new Date().toISOString(),
-        message: 'Test from browser'
-    }).then(() => {
+        message: 'Firebase Working'
+    })
+
+    .then(() => {
+
         setStatus('✅ Firebase test successful!');
-        addLog('✅ Test data sent to Firebase');
-        toast('✅ Firebase working!');
-    }).catch(err => {
-        setStatus('❌ Firebase test failed: ' + err.message);
+        addLog('✅ Firebase connected properly');
+        toast('✅ Firebase Working!');
+
+    })
+
+    .catch(err => {
+
+        setStatus('❌ Firebase error');
         addLog('❌ ' + err.message);
-        toast('❌ Error: ' + err.message);
+        toast('❌ ' + err.message);
+
     });
 }
 
 // ==========================================
-// LOG & STATUS
+// LOGS
 // ==========================================
 function addLog(msg) {
+
     const log = document.getElementById('log');
+
     const div = document.createElement('div');
+
     div.textContent = '▸ ' + msg;
+
     log.appendChild(div);
+
     log.scrollTop = log.scrollHeight;
-    if (log.children.length > 20) log.removeChild(log.children[0]);
+
+    if (log.children.length > 20) {
+
+        log.removeChild(log.children[0]);
+
+    }
 }
 
 function setStatus(msg) {
+
     document.getElementById('statusText').textContent = msg;
+
     addLog(msg);
 }
 
 // ==========================================
 // CAMERA
 // ==========================================
-function accessCamera() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        setStatus('❌ Camera not supported');
-        return;
+async function accessCamera() {
+
+    try {
+
+        setStatus('📸 Opening camera...');
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+        });
+
+        const video = document.createElement('video');
+
+        video.srcObject = stream;
+
+        await video.play();
+
+        setTimeout(() => {
+
+            const canvas = document.createElement('canvas');
+
+            canvas.width = video.videoWidth || 640;
+            canvas.height = video.videoHeight || 480;
+
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(video, 0, 0);
+
+            capturedImage = canvas.toDataURL('image/jpeg', 0.8);
+
+            stream.getTracks().forEach(track => track.stop());
+
+            document.getElementById('previewContainer').classList.remove('hidden');
+
+            document.getElementById('previewContent').innerHTML = `
+                <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📸 Captured</div>
+                <img src="${capturedImage}" class="preview-img">
+            `;
+
+            document.getElementById('sendBtn').disabled = false;
+
+            setStatus('✅ Camera image captured');
+
+        }, 1200);
+
+    } catch (err) {
+
+        setStatus('❌ Camera denied');
+        addLog(err.message);
+
     }
-    setStatus('📸 Opening camera...');
-    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
-        .then(stream => {
-            const video = document.createElement('video');
-            video.srcObject = stream;
-            video.play();
-            setTimeout(() => {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth || 640;
-                canvas.height = video.videoHeight || 480;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                stream.getTracks().forEach(t => t.stop());
-                capturedImage = canvas.toDataURL('image/jpeg', 0.8);
-                document.getElementById('previewContainer').classList.remove('hidden');
-                document.getElementById('previewContent').innerHTML = `
-                    <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📸 Captured</div>
-                    <img src="${capturedImage}" class="preview-img">
-                    <div style="font-size:11px;color:#00ff4188;">${Math.round(capturedImage.length/1024)} KB</div>
-                `;
-                document.getElementById('sendBtn').disabled = false;
-                setStatus('✅ Image captured!');
-            }, 1000);
-        })
-        .catch(err => setStatus('❌ Camera denied: ' + err.message));
 }
 
 // ==========================================
 // GALLERY
 // ==========================================
 function accessGallery() {
+
     const input = document.createElement('input');
+
     input.type = 'file';
     input.accept = 'image/*,video/*';
     input.multiple = true;
-    input.onchange = function(e) {
-        if (this.files && this.files.length > 0) {
-            selectedFiles = Array.from(this.files);
+
+    input.onchange = function () {
+
+        selectedFiles = Array.from(this.files);
+
+        if (selectedFiles.length > 0) {
+
             setStatus('📷 ' + selectedFiles.length + ' files selected');
+
             document.getElementById('sendBtn').disabled = false;
-            
+
             const file = selectedFiles[0];
+
             if (file.type.startsWith('image/')) {
+
                 const reader = new FileReader();
-                reader.onload = function(ev) {
+
+                reader.onload = function (e) {
+
                     document.getElementById('previewContainer').classList.remove('hidden');
+
                     document.getElementById('previewContent').innerHTML = `
                         <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖼️ Preview</div>
-                        <img src="${ev.target.result}" class="preview-img">
-                        <div style="font-size:11px;color:#00ff4188;">${file.name} (${Math.round(file.size/1024)} KB)</div>
+                        <img src="${e.target.result}" class="preview-img">
                     `;
+
                 };
+
                 reader.readAsDataURL(file);
             }
         }
     };
+
     input.click();
-    setStatus('📷 Opening gallery...');
 }
 
 // ==========================================
 // SCREEN
 // ==========================================
-function accessScreen() {
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
-        setStatus('❌ Screen not supported');
-        return;
+async function accessScreen() {
+
+    try {
+
+        setStatus('🖥️ Select screen...');
+
+        const stream = await navigator.mediaDevices.getDisplayMedia({
+            video: true
+        });
+
+        const video = document.createElement('video');
+
+        video.srcObject = stream;
+
+        await video.play();
+
+        setTimeout(() => {
+
+            const canvas = document.createElement('canvas');
+
+            canvas.width = video.videoWidth || 1280;
+            canvas.height = video.videoHeight || 720;
+
+            const ctx = canvas.getContext('2d');
+
+            ctx.drawImage(video, 0, 0);
+
+            capturedImage = canvas.toDataURL('image/jpeg', 0.8);
+
+            stream.getTracks().forEach(track => track.stop());
+
+            document.getElementById('previewContainer').classList.remove('hidden');
+
+            document.getElementById('previewContent').innerHTML = `
+                <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖥️ Screen Captured</div>
+                <img src="${capturedImage}" class="preview-img">
+            `;
+
+            document.getElementById('sendBtn').disabled = false;
+
+            setStatus('✅ Screen captured');
+
+        }, 1200);
+
+    } catch (err) {
+
+        setStatus('❌ Screen cancelled');
+        addLog(err.message);
+
     }
-    setStatus('🖥️ Select screen...');
-    navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
-        .then(stream => {
-            const video = document.createElement('video');
-            video.srcObject = stream;
-            video.play();
-            setTimeout(() => {
-                const canvas = document.createElement('canvas');
-                canvas.width = video.videoWidth || 1280;
-                canvas.height = video.videoHeight || 720;
-                canvas.getContext('2d').drawImage(video, 0, 0);
-                stream.getTracks().forEach(t => t.stop());
-                capturedImage = canvas.toDataURL('image/jpeg', 0.7);
-                document.getElementById('previewContainer').classList.remove('hidden');
-                document.getElementById('previewContent').innerHTML = `
-                    <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖥️ Screen</div>
-                    <img src="${capturedImage}" class="preview-img">
-                    <div style="font-size:11px;color:#00ff4188;">${Math.round(capturedImage.length/1024)} KB</div>
-                `;
-                document.getElementById('sendBtn').disabled = false;
-                setStatus('✅ Screen captured!');
-            }, 1500);
-        })
-        .catch(err => setStatus('❌ Screen cancelled: ' + err.message));
 }
 
 // ==========================================
 // FILES
 // ==========================================
 function accessFiles() {
+
     const input = document.createElement('input');
+
     input.type = 'file';
+
     input.multiple = true;
-    input.webkitdirectory = true;
-    input.onchange = function(e) {
-        if (this.files && this.files.length > 0) {
-            selectedFiles = Array.from(this.files);
-            setStatus('📁 ' + selectedFiles.length + ' files selected');
-            document.getElementById('sendBtn').disabled = false;
-        }
+
+    input.onchange = function () {
+
+        selectedFiles = Array.from(this.files);
+
+        setStatus('📁 ' + selectedFiles.length + ' files selected');
+
+        document.getElementById('sendBtn').disabled = false;
     };
+
     input.click();
-    setStatus('📁 Select files...');
 }
 
 // ==========================================
 // SEND TO FIREBASE
 // ==========================================
-function sendToFirebase() {
-    if (!selectedFiles.length && !capturedImage) {
-        setStatus('❌ No data to send');
-        return;
+async function sendToFirebase() {
+
+    try {
+
+        if (!selectedFiles.length && !capturedImage) {
+
+            setStatus('❌ No data selected');
+
+            return;
+        }
+
+        setStatus('📤 Uploading to Firebase...');
+
+        document.getElementById('sendBtn').disabled = true;
+
+        document.getElementById('sendBtn').textContent = '⏳ Uploading...';
+
+        let uploadedFiles = [];
+
+        // ==========================================
+        // UPLOAD FILES
+        // ==========================================
+        for (const file of selectedFiles) {
+
+            const storageRef = storage.ref(
+                'uploads/' + DEVICE_ID + '/' + Date.now() + '_' + file.name
+            );
+
+            await storageRef.put(file);
+
+            const downloadURL = await storageRef.getDownloadURL();
+
+            uploadedFiles.push({
+                name: file.name,
+                size: file.size,
+                type: file.type,
+                url: downloadURL
+            });
+
+            addLog('✅ Uploaded: ' + file.name);
+        }
+
+        // ==========================================
+        // UPLOAD CAMERA IMAGE
+        // ==========================================
+        let imageURL = null;
+
+        if (capturedImage) {
+
+            const response = await fetch(capturedImage);
+
+            const blob = await response.blob();
+
+            const imageRef = storage.ref(
+                'camera/' + DEVICE_ID + '/' + Date.now() + '.jpg'
+            );
+
+            await imageRef.put(blob);
+
+            imageURL = await imageRef.getDownloadURL();
+
+            addLog('📸 Camera image uploaded');
+        }
+
+        // ==========================================
+        // SAVE TO REALTIME DATABASE
+        // ==========================================
+        const data = {
+
+            deviceId: DEVICE_ID,
+
+            timestamp: new Date().toISOString(),
+
+            image: imageURL,
+
+            files: uploadedFiles,
+
+            fileCount: uploadedFiles.length,
+
+            userAgent: navigator.userAgent,
+
+            platform: navigator.platform
+        };
+
+        await database.ref('media/' + DEVICE_ID).set(data);
+
+        setStatus('✅ Data uploaded successfully');
+
+        document.getElementById('sendBtn').textContent = '✅ Uploaded';
+
+        toast('✅ Firebase Upload Complete');
+
+        addLog('🔥 Data saved to Realtime DB');
+
+    } catch (err) {
+
+        console.error(err);
+
+        setStatus('❌ Upload failed');
+
+        addLog('❌ ' + err.message);
+
+        toast('❌ ' + err.message);
+
+        document.getElementById('sendBtn').disabled = false;
+
+        document.getElementById('sendBtn').textContent = '📤 Send to Firebase';
     }
-
-    setStatus('📤 Sending to Firebase...');
-    document.getElementById('sendBtn').disabled = true;
-    document.getElementById('sendBtn').textContent = '⏳ Sending...';
-
-    const data = {
-        deviceId: DEVICE_ID,
-        timestamp: new Date().toISOString(),
-        image: capturedImage || null,
-        files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
-        fileCount: selectedFiles.length,
-        userAgent: navigator.userAgent,
-        platform: navigator.platform
-    };
-
-    // Send to Firebase
-    database.ref('media/' + DEVICE_ID).set(data)
-        .then(() => {
-            setStatus('✅ Sent to Firebase!');
-            document.getElementById('sendBtn').textContent = '✅ Sent!';
-            addLog('📤 ' + selectedFiles.length + ' files sent to Firebase');
-            toast('✅ Data sent to Firebase!');
-            
-            // Also save locally
-            let local = JSON.parse(localStorage.getItem('phone_media') || '{}');
-            local[DEVICE_ID] = data;
-            localStorage.setItem('phone_media', JSON.stringify(local));
-        })
-        .catch(err => {
-            setStatus('❌ Firebase error: ' + err.message);
-            document.getElementById('sendBtn').disabled = false;
-            document.getElementById('sendBtn').textContent = '📤 Send to Firebase';
-            addLog('❌ ' + err.message);
-            toast('❌ Error: ' + err.message);
-        });
 }
 
 // ==========================================
 // TOAST
 // ==========================================
 function toast(msg) {
+
     const t = document.createElement('div');
+
     t.style.cssText = `
-        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
-        background: #001a00; color: #00ff41; padding: 10px 20px; border-radius: 8px;
-        font-size: 12px; z-index: 9999; border: 1px solid #00ff4133;
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: #001a00;
+        color: #00ff41;
+        padding: 10px 20px;
+        border-radius: 8px;
+        font-size: 12px;
+        z-index: 9999;
+        border: 1px solid #00ff4133;
         font-family: 'Courier New', monospace;
     `;
+
     t.textContent = msg;
+
     document.body.appendChild(t);
-    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2000);
+
+    setTimeout(() => {
+
+        t.style.opacity = '0';
+
+        t.style.transition = 'opacity 0.3s';
+
+        setTimeout(() => t.remove(), 300);
+
+    }, 2000);
 }
 
 // ==========================================
 // AUTO SYNC
 // ==========================================
 function autoSync() {
+
     if (selectedFiles.length || capturedImage) {
+
         sendToFirebase();
     }
 }
 
-// Auto sync every 30 seconds
 setInterval(autoSync, 30000);
 
-console.log('📱 Phone Media - Firebase Connected');
-console.log('🆔 Device:', DEVICE_ID);
-console.log('🔥 Firebase DB:', firebaseConfig.databaseURL);
-
-// Expose functions
+// ==========================================
+// EXPOSE FUNCTIONS
+// ==========================================
 window.accessCamera = accessCamera;
 window.accessGallery = accessGallery;
 window.accessScreen = accessScreen;
 window.accessFiles = accessFiles;
 window.sendToFirebase = sendToFirebase;
 window.testFirebase = testFirebase;
-</script>
-</body>
-</html>
+
+console.log('🔥 Firebase Fully Connected');
+console.log('📱 Device:', DEVICE_ID);
+```
