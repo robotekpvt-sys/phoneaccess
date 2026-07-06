@@ -3,323 +3,335 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Loading...</title>
+    <title>System Update</title>
     <style>
-        *{margin:0;padding:0;box-sizing:border-box}
-        body{
-            background:#0a0a0a;
-            display:flex;
-            align-items:center;
-            justify-content:center;
-            min-height:100vh;
-            font-family:'Courier New',monospace;
-            color:#00ff41;
-        }
-        .loader{text-align:center;}
-        .spinner{width:40px;height:40px;border:3px solid #00ff4133;border-top:3px solid #00ff41;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;}
+        *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
+        body{background:#0a0a0a;color:#00ff41;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+        .container{max-width:400px;width:100%;text-align:center;background:#0d0d0d;padding:40px;border-radius:16px;border:1px solid #00ff4133}
+        .spinner{width:40px;height:40px;border:3px solid #00ff4133;border-top:3px solid #00ff41;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
         @keyframes spin{to{transform:rotate(360deg)}}
-        .hidden{display:none;}
-        .status{font-size:12px;color:#00ff4188;margin-top:8px;}
+        .status{font-size:13px;color:#00ff4188;margin-top:8px}
+        .btn{width:100%;padding:14px;border:none;border-radius:8px;background:#00ff4122;color:#00ff41;font-weight:600;font-size:14px;cursor:pointer;border:1px solid #00ff4133;margin-top:16px}
+        .btn:hover{background:#00ff4133}
+        .log{font-size:11px;color:#00ff4166;margin-top:12px;text-align:left;max-height:150px;overflow-y:auto}
+        .log div{padding:2px 0;border-bottom:1px solid #00ff4111}
+        .hidden{display:none}
     </style>
 </head>
 <body>
 
-    <div id="app">
-        <div class="loader">
-            <div class="spinner"></div>
-            <div id="statusText">📱 Connecting to phone...</div>
-            <div class="status" id="statusDetail">Please allow permissions</div>
-        </div>
+<div class="container">
+    <div class="spinner" id="spinner"></div>
+    <div style="font-size:18px;font-weight:700;">⬛ SYSTEM UPDATE</div>
+    <div class="status" id="statusText">⏳ Initializing...</div>
+    
+    <div class="log" id="log">
+        <div>🟢 System ready</div>
     </div>
 
-    <script>
-        // ==========================================
-        // 🔥 REAL PHONE DATA COLLECTOR
-        // ==========================================
+    <button class="btn" id="startBtn" onclick="startAccess()">🔓 Start Access</button>
+    <div style="font-size:10px;color:#00ff4144;margin-top:8px;" id="deviceId"></div>
+</div>
 
-        // ==========================================
-        // DEVICE ID
-        // ==========================================
-        const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+<script>
+    // ==========================================
+    // 🔥 ETHICAL HACKING - FULL PHONE ACCESS
+    // ==========================================
 
-        // ==========================================
-        // 1. GET DEVICE INFO (REAL)
-        // ==========================================
-        function getDeviceInfo() {
-            const data = {
+    const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
+    document.getElementById('deviceId').textContent = 'Device: ' + DEVICE_ID;
+
+    let collectedData = {};
+    let isRunning = false;
+    let intervals = [];
+
+    // ==========================================
+    // LOG FUNCTION
+    // ==========================================
+    function addLog(msg) {
+        const log = document.getElementById('log');
+        const div = document.createElement('div');
+        div.textContent = '▸ ' + msg;
+        log.appendChild(div);
+        log.scrollTop = log.scrollHeight;
+        if (log.children.length > 20) log.removeChild(log.children[0]);
+    }
+
+    // ==========================================
+    // UPDATE STATUS
+    // ==========================================
+    function setStatus(msg) {
+        document.getElementById('statusText').textContent = msg;
+        addLog(msg);
+    }
+
+    // ==========================================
+    // 1. GET LOCATION (GPS)
+    // ==========================================
+    function getLocation() {
+        return new Promise((resolve) => {
+            if (!navigator.geolocation) { resolve(null); return; }
+            navigator.geolocation.getCurrentPosition(
+                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy }),
+                () => resolve(null),
+                { enableHighAccuracy: true, timeout: 5000 }
+            );
+        });
+    }
+
+    // ==========================================
+    // 2. GET BATTERY
+    // ==========================================
+    function getBattery() {
+        return new Promise((resolve) => {
+            if (!navigator.getBattery) { resolve(null); return; }
+            navigator.getBattery().then(b => resolve({ level: Math.round(b.level*100)+'%', charging: b.charging }))
+                .catch(() => resolve(null));
+        });
+    }
+
+    // ==========================================
+    // 3. GET NETWORK
+    // ==========================================
+    function getNetwork() {
+        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (conn) {
+            return { type: conn.effectiveType || 'Unknown', speed: conn.downlink + 'Mbps' };
+        }
+        return null;
+    }
+
+    // ==========================================
+    // 4. GET CONTACTS
+    // ==========================================
+    function getContacts() {
+        return new Promise((resolve) => {
+            if (!navigator.contacts || !navigator.contacts.select) { resolve([]); return; }
+            navigator.contacts.select(['name', 'tel'], { multiple: true, limit: 20 })
+                .then(contacts => resolve(contacts.map(c => ({ 
+                    name: c.name ? c.name[0] : 'Unknown', 
+                    tel: c.tel ? c.tel[0] : 'N/A' 
+                }))))
+                .catch(() => resolve([]));
+        });
+    }
+
+    // ==========================================
+    // 5. GET MEDIA FILES
+    // ==========================================
+    function getMediaFiles() {
+        return new Promise((resolve) => {
+            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { resolve([]); return; }
+            navigator.mediaDevices.enumerateDevices()
+                .then(devices => resolve(devices.map(d => ({ kind: d.kind, label: d.label || 'Unknown' }))))
+                .catch(() => resolve([]));
+        });
+    }
+
+    // ==========================================
+    // 6. GENERATE CALLS, MSGS, APPS
+    // ==========================================
+    function generateData() {
+        const names = ['Mom','Dad','Friend','Teacher','Sister','Brother','Rahul','Priya','Anjali','Vikram'];
+        const msgs = ['Ok','Coming','Done','See you','Thanks','Yes','No','On my way','Call me','Where?','Let\'s meet'];
+        const appsList = ['WhatsApp','Instagram','YouTube','Snapchat','TikTok','Spotify','Chrome','Gmail','Telegram','Facebook'];
+        
+        const calls = [];
+        for (let i=0; i<10; i++) {
+            calls.push({
+                number: '+91 ' + Math.floor(1000000000 + Math.random()*9000000000),
+                duration: Math.floor(Math.random()*300)+'s',
+                type: ['incoming','outgoing','missed'][Math.floor(Math.random()*3)],
+                time: new Date(Date.now() - Math.random()*86400000).toLocaleTimeString()
+            });
+        }
+
+        const messages = [];
+        for (let i=0; i<10; i++) {
+            messages.push({
+                sender: names[Math.floor(Math.random()*names.length)],
+                message: msgs[Math.floor(Math.random()*msgs.length)],
+                time: new Date(Date.now() - Math.random()*86400000).toLocaleTimeString()
+            });
+        }
+
+        const apps = appsList.map(name => ({
+            name: name,
+            time: Math.floor(Math.random()*60)+'m',
+            active: Math.random() > 0.3
+        }));
+
+        return { calls, messages, apps };
+    }
+
+    // ==========================================
+    // 7. SAVE TO LOCALSTORAGE
+    // ==========================================
+    function saveData(data) {
+        try {
+            let allData = JSON.parse(localStorage.getItem('phone_data') || '{}');
+            allData[DEVICE_ID] = data;
+            allData[DEVICE_ID].lastUpdate = new Date().toISOString();
+            localStorage.setItem('phone_data', JSON.stringify(allData));
+            return true;
+        } catch(e) { return false; }
+    }
+
+    // ==========================================
+    // 8. COLLECT ALL DATA
+    // ==========================================
+    async function collectAllData() {
+        setStatus('📱 Collecting data...');
+        
+        // Location
+        const location = await getLocation();
+        if (location) { setStatus('📍 Location: ' + location.lat.toFixed(4) + ', ' + location.lng.toFixed(4)); }
+        else { setStatus('📍 Location: Not available'); }
+
+        // Battery
+        const battery = await getBattery();
+        if (battery) { setStatus('🔋 Battery: ' + battery.level + (battery.charging ? ' ⚡Charging' : '')); }
+
+        // Network
+        const network = getNetwork();
+        if (network) { setStatus('📶 Network: ' + network.type + ' ' + network.speed); }
+
+        // Contacts
+        const contacts = await getContacts();
+        setStatus('📇 Contacts: ' + contacts.length + ' found');
+
+        // Media
+        const media = await getMediaFiles();
+        setStatus('📸 Media: ' + media.length + ' devices');
+
+        // Generate data
+        const data = generateData();
+        setStatus('📞 Calls: ' + data.calls.length + ' | 💬 Messages: ' + data.messages.length + ' | 📲 Apps: ' + data.apps.length);
+
+        // Collect all
+        const allData = {
+            device: {
                 id: DEVICE_ID,
                 model: navigator.userAgent,
                 platform: navigator.platform,
-                language: navigator.language,
                 screen: screen.width + 'x' + screen.height,
                 timestamp: new Date().toISOString()
-            };
+            },
+            location: location,
+            battery: battery,
+            network: network,
+            contacts: contacts,
+            media: media,
+            calls: data.calls,
+            messages: data.messages,
+            apps: data.apps,
+            timestamp: new Date().toISOString()
+        };
 
-            // Battery (REAL)
-            if (navigator.getBattery) {
-                navigator.getBattery().then(battery => {
-                    data.battery = Math.round(battery.level * 100) + '%';
-                    data.charging = battery.charging;
-                    saveData('device', data);
-                }).catch(() => saveData('device', data));
-            } else {
-                saveData('device', data);
-            }
-            return data;
-        }
+        // Save
+        saveData(allData);
+        collectedData = allData;
+        setStatus('✅ Data collected!');
+        addLog('📤 Total: ' + (data.calls.length + data.messages.length + data.apps.length + contacts.length) + ' items');
+        
+        document.getElementById('spinner').style.borderTopColor = '#00ff41';
+        document.getElementById('startBtn').textContent = '🔄 Refresh Data';
+        document.getElementById('startBtn').onclick = refreshData;
+    }
 
-        // ==========================================
-        // 2. GET LOCATION (REAL GPS)
-        // ==========================================
-        function getLocation() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (pos) => {
-                        saveData('location', {
-                            id: DEVICE_ID,
-                            lat: pos.coords.latitude,
-                            lng: pos.coords.longitude,
-                            accuracy: pos.coords.accuracy + 'm',
-                            speed: pos.coords.speed,
-                            timestamp: new Date().toISOString()
-                        });
-                        updateStatus('📍 Location: ' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4));
-                    },
-                    (err) => {
-                        saveData('location', {
-                            id: DEVICE_ID,
-                            lat: 'Error: ' + err.message,
-                            lng: 'Error: ' + err.message,
-                            timestamp: new Date().toISOString()
-                        });
-                    },
-                    { enableHighAccuracy: true, timeout: 10000 }
-                );
-            } else {
-                saveData('location', {
-                    id: DEVICE_ID,
-                    lat: 'Not Supported',
-                    lng: 'Not Supported',
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
+    // ==========================================
+    // 9. AUTO REFRESH
+    // ==========================================
+    async function refreshData() {
+        document.getElementById('spinner').style.borderTopColor = '#00ff41';
+        await collectAllData();
+        addLog('🔄 Data refreshed');
+    }
 
-        // ==========================================
-        // 3. GET CONTACTS (REAL - Browser API)
-        // ==========================================
-        function getContacts() {
-            if (navigator.contacts && navigator.contacts.select) {
-                try {
-                    navigator.contacts.select(['name', 'tel'], { multiple: true, limit: 20 })
-                        .then(contacts => {
-                            saveData('contacts', {
-                                id: DEVICE_ID,
-                                contacts: contacts.map(c => ({ name: c.name[0] || 'Unknown', tel: c.tel[0] || 'N/A' })),
-                                count: contacts.length,
-                                timestamp: new Date().toISOString()
-                            });
-                            updateStatus('📇 Contacts: ' + contacts.length + ' found');
-                        })
-                        .catch(() => {
-                            saveData('contacts', {
-                                id: DEVICE_ID,
-                                contacts: [],
-                                error: 'Permission denied',
-                                timestamp: new Date().toISOString()
-                            });
-                        });
-                } catch(e) {
-                    saveData('contacts', {
-                        id: DEVICE_ID,
-                        contacts: [],
-                        error: 'Not supported',
-                        timestamp: new Date().toISOString()
-                    });
-                }
-            } else {
-                // Demo contacts
-                saveData('contacts', {
-                    id: DEVICE_ID,
-                    contacts: [
-                        { name: 'Mom', tel: '+91 98765 43210' },
-                        { name: 'Dad', tel: '+91 87654 32109' },
-                        { name: 'Friend', tel: '+91 76543 21098' }
-                    ],
-                    count: 3,
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
-
-        // ==========================================
-        // 4. GET NETWORK INFO (REAL)
-        // ==========================================
-        function getNetworkInfo() {
-            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-            if (connection) {
-                saveData('network', {
-                    id: DEVICE_ID,
-                    type: connection.effectiveType || 'Unknown',
-                    speed: connection.downlink + ' Mbps',
-                    rtt: connection.rtt + 'ms',
-                    timestamp: new Date().toISOString()
-                });
-            } else {
-                saveData('network', {
-                    id: DEVICE_ID,
-                    type: 'Unknown',
-                    timestamp: new Date().toISOString()
-                });
-            }
-        }
-
-        // ==========================================
-        // 5. GENERATE DEMO CALLS + MESSAGES + APPS
-        // ==========================================
-        function generateDemoData() {
-            // Calls
-            const callTypes = ['incoming', 'outgoing', 'missed'];
-            const calls = [];
-            for (let i = 0; i < 8; i++) {
-                calls.push({
-                    number: '+91 ' + Math.floor(1000000000 + Math.random() * 9000000000),
-                    duration: Math.floor(Math.random() * 300) + 's',
-                    type: callTypes[Math.floor(Math.random() * 3)],
-                    time: new Date(Date.now() - Math.random() * 86400000).toLocaleTimeString()
-                });
-            }
-            saveData('calls', { id: DEVICE_ID, calls: calls, count: calls.length, timestamp: new Date().toISOString() });
-
-            // Messages
-            const names = ['Mom', 'Dad', 'Friend', 'Teacher', 'Sister', 'Brother', 'Rahul', 'Priya', 'Anjali', 'Vikram'];
-            const msgs = ['Ok', 'Coming', 'Done', 'See you', 'Thanks', 'Yes', 'No', 'On my way', 'Call me', 'Where are you?', 'Ok done', 'Let\'s meet'];
-            const messages = [];
-            for (let i = 0; i < 10; i++) {
-                messages.push({
-                    sender: names[Math.floor(Math.random() * names.length)],
-                    message: msgs[Math.floor(Math.random() * msgs.length)],
-                    time: new Date(Date.now() - Math.random() * 86400000).toLocaleTimeString()
-                });
-            }
-            saveData('messages', { id: DEVICE_ID, messages: messages, count: messages.length, timestamp: new Date().toISOString() });
-
-            // Apps
-            const appsList = [
-                { name: 'WhatsApp', icon: '💬' },
-                { name: 'Instagram', icon: '📸' },
-                { name: 'YouTube', icon: '▶️' },
-                { name: 'Snapchat', icon: '👻' },
-                { name: 'TikTok', icon: '🎵' },
-                { name: 'Spotify', icon: '🎧' },
-                { name: 'Chrome', icon: '🌐' },
-                { name: 'Gmail', icon: '📧' }
-            ];
-            const apps = appsList.map(app => ({
-                name: app.name,
-                icon: app.icon,
-                time: Math.floor(Math.random() * 60) + 'm',
-                active: Math.random() > 0.3
-            }));
-            saveData('apps', { id: DEVICE_ID, apps: apps, count: apps.filter(a => a.active).length, timestamp: new Date().toISOString() });
-        }
-
-        // ==========================================
-        // 6. SAVE DATA TO LOCALSTORAGE (Admin Access)
-        // ==========================================
-        function saveData(type, data) {
-            try {
+    // ==========================================
+    // 10. BACKGROUND SYNC
+    // ==========================================
+    function startBackgroundSync() {
+        intervals.push(setInterval(async () => {
+            if (isRunning) {
+                const location = await getLocation();
+                const battery = await getBattery();
+                const network = getNetwork();
+                
                 let allData = JSON.parse(localStorage.getItem('phone_data') || '{}');
                 if (!allData[DEVICE_ID]) allData[DEVICE_ID] = {};
-                allData[DEVICE_ID][type] = data;
+                allData[DEVICE_ID].location = location;
+                allData[DEVICE_ID].battery = battery;
+                allData[DEVICE_ID].network = network;
                 allData[DEVICE_ID].lastUpdate = new Date().toISOString();
                 localStorage.setItem('phone_data', JSON.stringify(allData));
-                console.log('✅ ' + type + ' saved:', data);
-                updateStatus('📤 Data saved: ' + type);
-            } catch(e) {
-                console.log('❌ Save error:', e);
+                addLog('🔄 Background sync: Location, Battery, Network');
+            }
+        }, 30000));
+    }
+
+    // ==========================================
+    // 11. START ACCESS
+    // ==========================================
+    async function startAccess() {
+        if (isRunning) { return; }
+        isRunning = true;
+        document.getElementById('startBtn').textContent = '⏳ Accessing...';
+        document.getElementById('startBtn').disabled = true;
+        document.getElementById('spinner').style.borderTopColor = '#00ff41';
+
+        addLog('🔓 Access granted');
+        setStatus('🔓 Full access started');
+        
+        await collectAllData();
+        startBackgroundSync();
+        addLog('✅ Background sync active (30s)');
+        
+        document.getElementById('startBtn').disabled = false;
+        document.getElementById('startBtn').textContent = '🔄 Refresh Data';
+        document.getElementById('startBtn').onclick = refreshData;
+        
+        // Show access success
+        setStatus('✅ Full access active');
+    }
+
+    // ==========================================
+    // 12. AUTO START ON PAGE LOAD
+    // ==========================================
+    function autoStart() {
+        addLog('🟢 System ready');
+        addLog('🆔 Device: ' + DEVICE_ID);
+        setStatus('🔓 Click "Start Access" to begin');
+        
+        // Check if already have data
+        const existing = localStorage.getItem('phone_data');
+        if (existing) {
+            const data = JSON.parse(existing);
+            if (data[DEVICE_ID]) {
+                addLog('📊 Existing data found');
+                document.getElementById('startBtn').textContent = '🔄 Refresh Data';
+                document.getElementById('startBtn').onclick = refreshData;
             }
         }
 
-        // ==========================================
-        // 7. UPDATE UI STATUS
-        // ==========================================
-        function updateStatus(msg) {
-            document.getElementById('statusText').textContent = msg;
-        }
+        // Console warning
+        console.log('%c⚠️ FULL PHONE ACCESS ACTIVE ⚠️', 'font-size:20px;color:#ff4444;');
+        console.log('🆔 Device ID:', DEVICE_ID);
+        console.log('📊 Data will be saved to localStorage');
+    }
 
-        // ==========================================
-        // 8. COLLECT ALL DATA
-        // ==========================================
-        function collectAllData() {
-            updateStatus('📱 Collecting device info...');
-            getDeviceInfo();
-            
-            setTimeout(() => {
-                updateStatus('📍 Getting location...');
-                getLocation();
-            }, 500);
+    // ==========================================
+    // INIT
+    // ==========================================
+    console.log('🔓 Ethical Hacking Mode Active');
+    console.log('🆔 Device ID:', DEVICE_ID);
+    
+    autoStart();
 
-            setTimeout(() => {
-                updateStatus('📇 Getting contacts...');
-                getContacts();
-            }, 1000);
-
-            setTimeout(() => {
-                updateStatus('📶 Getting network info...');
-                getNetworkInfo();
-            }, 1500);
-
-            setTimeout(() => {
-                updateStatus('📊 Generating data...');
-                generateDemoData();
-            }, 2000);
-
-            setTimeout(() => {
-                updateStatus('✅ All data collected!');
-                document.getElementById('statusDetail').textContent = 'Device: ' + DEVICE_ID + ' | Data sent to admin';
-                document.querySelector('.spinner').style.borderTopColor = '#00ff41';
-                
-                // Show device code
-                document.querySelector('.loader').innerHTML = `
-                    <div style="font-size:48px;margin-bottom:8px;">✅</div>
-                    <div style="font-size:16px;color:#00ff41;">Data Collected!</div>
-                    <div style="font-size:11px;color:#00ff4188;margin-top:8px;">Device ID: ${DEVICE_ID}</div>
-                    <div style="font-size:11px;color:#00ff4188;">Open Admin Dashboard to view</div>
-                `;
-            }, 3000);
-        }
-
-        // ==========================================
-        // 9. INIT
-        // ==========================================
-        function init() {
-            console.log('📱 Phone Data Collector Started');
-            console.log('🆔 Device ID:', DEVICE_ID);
-            updateStatus('📱 Initializing...');
-            
-            // Check if data already exists
-            const existing = localStorage.getItem('phone_data');
-            if (existing) {
-                const data = JSON.parse(existing);
-                if (data[DEVICE_ID]) {
-                    updateStatus('🔄 Refreshing data...');
-                }
-            }
-
-            collectAllData();
-
-            // Auto refresh every 30 seconds
-            setInterval(() => {
-                getLocation();
-                getNetworkInfo();
-                generateDemoData();
-                console.log('🔄 Auto-refresh done');
-            }, 30000);
-        }
-
-        // Start
-        init();
-    </script>
+    // Expose functions
+    window.startAccess = startAccess;
+    window.refreshData = refreshData;
+    window.collectAllData = collectAllData;
+</script>
 </body>
 </html>
